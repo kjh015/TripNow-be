@@ -14,19 +14,15 @@ public class AuthContextManager {
     public ServerWebExchange prepareAuthorizedExchange(ServerWebExchange exchange, UserContext user) {
         return exchange.mutate()
                 .request(r -> r.headers(headers -> {
-                    // 상시 삭제 (보안 헤더 스푸핑 방지)
-                    headers.remove(AuthConstants.X_USER_ID);
-                    headers.remove(AuthConstants.X_USER_ROLES);
-                    headers.remove(AuthConstants.X_ACCESS_TOKEN);
-
-                    // 인증 정보가 있는 경우에만 주입 (Late Binding)
+                    // 클라이언트 헤더 제거는 InternalHeaderStripFilter가 모든 요청에서 수행한다.
+                    // 인증 정보가 있는 경우에만 주입하며, set으로 남은 값이 있어도 덮어쓴다 (Late Binding)
                     if (user != null) {
-                        headers.add(AuthConstants.X_USER_ID, String.valueOf(user.id()));
+                        headers.set(AuthConstants.X_USER_ID, String.valueOf(user.id()));
                         if (user.roles() != null && !user.roles().isEmpty()) {
-                            headers.add(AuthConstants.X_USER_ROLES, String.join(",", user.roles()));
+                            headers.set(AuthConstants.X_USER_ROLES, String.join(",", user.roles()));
                         }
                         if (StringUtils.hasText(user.accessToken())) {
-                            headers.add(AuthConstants.X_ACCESS_TOKEN, user.accessToken());
+                            headers.set(AuthConstants.X_ACCESS_TOKEN, user.accessToken());
                         }
                     }
                 }))

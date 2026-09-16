@@ -67,6 +67,11 @@ public class JwtTokenProvider {
         return Collections.emptyList();
     }
 
+    public String getTokenType(Claims claims) {
+        Object type = claims.get(AuthConstants.CLAIM_TOKEN_TYPE);
+        return type instanceof String tokenType ? tokenType : null;
+    }
+
     private ApiGatewayErrorCode determineErrorCode(Throwable e) {
         if (e instanceof SignatureException) return ApiGatewayErrorCode.SIGNATURE_INVALID_JWT;
         if (e instanceof ExpiredJwtException) return ApiGatewayErrorCode.EXPIRED_JWT;

@@ -20,13 +20,12 @@ public class UserContextInterceptor implements HandlerInterceptor {
         String accessToken = request.getHeader(AuthConstants.X_ACCESS_TOKEN);
 
         boolean hasAnyAuthHeader = userId != null || roles != null || accessToken != null;
-        boolean hasAllAuthHeader = userId != null && roles != null && StringUtils.hasText(accessToken);
+        // 권한이 없는 사용자는 X-User-Roles가 전달되지 않으므로 userId와 accessToken만으로 인증 요청을 판단한다
+        boolean isAuthenticated = userId != null && StringUtils.hasText(accessToken);
 
-        if (hasAllAuthHeader) {
+        if (isAuthenticated) {
             try {
-                List<String> roleList =
-                        Arrays.stream(roles.split(",")).map(String::trim).toList();
-                UserContext context = UserContext.of(Long.valueOf(userId), roleList, accessToken);
+                UserContext context = UserContext.of(Long.valueOf(userId), parseRoles(roles), accessToken);
                 UserContextHolder.setContext(context);
             } catch (NumberFormatException e) {
                 throw new GeneralException(ErrorCode.BAD_REQUEST);
@@ -35,6 +34,17 @@ public class UserContextInterceptor implements HandlerInterceptor {
             throw new GeneralException(ErrorCode.BAD_REQUEST);
         }
         return true;
+    }
+
+    /** 권한 헤더가 없거나 비어 있으면 빈 권한으로 해석한다. */
+    private List<String> parseRoles(String roles) {
+        if (!StringUtils.hasText(roles)) {
+            return List.of();
+        }
+        return Arrays.stream(roles.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .toList();
     }
 
     @Override
