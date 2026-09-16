@@ -10,6 +10,7 @@ public enum UserActivityServiceErrorCode implements BaseErrorCode {
     // LogProcess
     LOG_PROCESS_NOT_FOUND(404, "PROCESS404_1", "요청한 로그 프로세스를 찾을 수 없습니다."),
     LOG_PROCESS_ALREADY_DELETED(400, "PROCESS400_1", "이미 삭제된 로그 프로세스입니다."),
+    LOG_PROCESS_NAME_DUPLICATED(400, "PROCESS400_2", "이미 사용 중인 로그 프로세스 이름입니다."),
 
     // FormatRule
     FORMAT_RULE_ALREADY_DELETED(400, "FORMAT400_3", "이미 삭제된 포맷규칙입니다."),

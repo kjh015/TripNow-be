@@ -27,6 +27,12 @@ public class CacheEventListener {
             return;
         }
 
+        if (event.allEntries()) {
+            log.debug("DB 트랜잭션 커밋 확인. 글로벌 리스너가 캐시 전체를 무효화합니다. Cache: {}", cacheName);
+            cache.clear();
+            return;
+        }
+
         log.debug("DB 트랜잭션 커밋 확인. 글로벌 리스너가 캐시를 동적 무효화합니다. Cache: {}, Key: {}", cacheName, cacheKey);
         cache.evict(cacheKey);
     }

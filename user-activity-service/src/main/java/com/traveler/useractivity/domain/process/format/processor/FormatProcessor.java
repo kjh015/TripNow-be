@@ -7,6 +7,7 @@ import com.traveler.useractivity.domain.process.core.executor.KafkaPipelineExecu
 import com.traveler.useractivity.domain.process.core.logging.ProcessLogContext;
 import com.traveler.useractivity.domain.process.core.message.FailInfo;
 import com.traveler.useractivity.domain.process.core.message.LogMetadata;
+import com.traveler.useractivity.domain.process.core.model.ActiveLogProcess;
 import com.traveler.useractivity.domain.process.core.provider.LogProcessProvider;
 import com.traveler.useractivity.domain.process.format.message.RawLog;
 import com.traveler.useractivity.domain.process.format.model.ActiveFormatRule;
@@ -41,27 +42,25 @@ public class FormatProcessor {
     @KafkaListener(topics = "${app.kafka.topics.format-stream}", groupId = "${app.kafka.groups.format}")
     public CompletableFuture<Void> process(
             @Payload String payload,
-            @Header(value = "X-Log-Process-Id", required = false) byte[] logProcessIdHeader,
+            @Header(value = "X-Log-Process-Code", required = false) byte[] logProcessCodeHeader,
             Acknowledgment ack) {
 
         // fluentd는 헤더를 순수 문자열 바이트로 보내므로(타입 메타데이터 없음) 직접 파싱해야 함
-        Long logProcessId = logProcessIdHeader == null
-                ? null
-                : Long.parseLong(new String(logProcessIdHeader, StandardCharsets.UTF_8).trim());
+        String logProcessCode = decodeHeader(logProcessCodeHeader);
 
         return kafkaPipelineExecutor.execute(ack, () -> {
-            if (logProcessId == null) {
-                throw new IllegalArgumentException(String.format(
-                        "Kafka Header 누락: X-Log-Process-Id (Payload Size: %d bytes)",
-                        payload != null ? payload.length() : 0));
-            }
+            ActiveLogProcess logProcess = resolveLogProcess(logProcessCode, payload);
 
             RawLog rawLog = objectMapper.readValue(payload, RawLog.class);
-            LogMetadata metadata = createMetadata(logProcessId);
+            LogMetadata metadata = createMetadata(logProcess);
             ProcessLogContext.put(metadata);
-            log.debug("수신 (logProcessId: {}, path: {})", logProcessId, rawLog.path());
+            log.debug(
+                    "수신 (logProcessId: {}, logProcessCode: {}, path: {})",
+                    logProcess.id(),
+                    logProcess.name(),
+                    rawLog.path());
 
-            List<ActiveFormatRule> activeFormatRules = formatRuleProvider.getActiveFormatRules(logProcessId);
+            List<ActiveFormatRule> activeFormatRules = formatRuleProvider.getActiveFormatRules(logProcess.id());
             Map<String, String> formattedLog = formatService.formatLog(rawLog, activeFormatRules);
 
             if (formattedLog == null || formattedLog.isEmpty()) {
@@ -77,10 +76,28 @@ public class FormatProcessor {
         });
     }
 
+    private String decodeHeader(byte[] header) {
+        if (header == null) {
+            return null;
+        }
+        String value = new String(header, StandardCharsets.UTF_8).trim();
+        return value.isEmpty() ? null : value;
+    }
+
+    // 헤더의 프로세스 코드로 로그 프로세스 조회
+    private ActiveLogProcess resolveLogProcess(String logProcessCode, String payload) {
+        if (logProcessCode != null) {
+            return logProcessProvider.getByCode(logProcessCode);
+        }
+
+        throw new IllegalArgumentException(String.format(
+                "Kafka Header 누락: X-Log-Process-Code (Payload Size: %d bytes)",
+                payload != null ? payload.length() : 0));
+    }
+
     // 식별용 메타데이터 조립
-    private LogMetadata createMetadata(Long logProcessId) {
-        return new LogMetadata(
-                UUID.randomUUID().toString(), logProcessId, logProcessProvider.getLogProcessName(logProcessId));
+    private LogMetadata createMetadata(ActiveLogProcess logProcess) {
+        return new LogMetadata(UUID.randomUUID().toString(), logProcess.id(), logProcess.name());
     }
 
     // 포맷팅 실패 원인 객체 조립
