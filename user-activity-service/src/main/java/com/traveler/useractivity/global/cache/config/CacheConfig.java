@@ -18,7 +18,7 @@ public class CacheConfig {
     public CacheManager cacheManager() {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager();
 
-        cacheManager.registerCustomCache(CacheConstants.LOG_PROCESS_NAME, buildNativeCache(10, 10000));
+        cacheManager.registerCustomCache(CacheConstants.LOG_PROCESS_BY_CODE, buildNativeCache(10, 10000));
         cacheManager.registerCustomCache(CacheConstants.ACTIVE_FORMAT_RULES, buildNativeCache(30, 1000));
         cacheManager.registerCustomCache(CacheConstants.ACTIVE_FILTER_RULES, buildNativeCache(30, 1000));
         cacheManager.registerCustomCache(CacheConstants.ACTIVE_DEDUP_RULES, buildNativeCache(5, 5000));

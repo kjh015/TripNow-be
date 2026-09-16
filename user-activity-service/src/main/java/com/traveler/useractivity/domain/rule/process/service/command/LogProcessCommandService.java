@@ -22,6 +22,11 @@ public class LogProcessCommandService {
     private final ApplicationEventPublisher eventPublisher;
 
     public LogProcessResponse.CreateDTO createLogProcess(LogProcessRequest.CreateDTO dto) {
+        // 이름은 파이프라인이 프로세스를 찾는 코드이므로 중복을 막음 (검사 없이 두면 DB 제약 위반이 500으로 나감)
+        if (logProcessRepository.existsByName(dto.name())) {
+            throw new UserActivityServiceException(UserActivityServiceErrorCode.LOG_PROCESS_NAME_DUPLICATED);
+        }
+
         LogProcess logProcess = logProcessMapper.toCreateEntity(dto);
 
         LogProcess savedLogProcess = logProcessRepository.save(logProcess);
@@ -35,9 +40,13 @@ public class LogProcessCommandService {
                 .orElseThrow(
                         () -> new UserActivityServiceException(UserActivityServiceErrorCode.LOG_PROCESS_NOT_FOUND));
 
+        if (logProcessRepository.existsByNameAndIdNot(dto.name(), logProcessId)) {
+            throw new UserActivityServiceException(UserActivityServiceErrorCode.LOG_PROCESS_NAME_DUPLICATED);
+        }
+
         logProcess.update(dto.name(), dto.description());
 
-        eventPublisher.publishEvent(new LogProcessEvent.Evict(logProcessId));
+        eventPublisher.publishEvent(new LogProcessEvent.EvictByCode());
 
         return logProcessMapper.toUpdateDTO(logProcess);
     }
@@ -50,7 +59,7 @@ public class LogProcessCommandService {
 
         logProcess.delete();
 
-        eventPublisher.publishEvent(new LogProcessEvent.Evict(logProcessId));
+        eventPublisher.publishEvent(new LogProcessEvent.EvictByCode());
 
         return logProcessMapper.toDeleteDTO(logProcess);
     }
