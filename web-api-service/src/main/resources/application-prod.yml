@@ -6,9 +6,10 @@ spring:
     openfeign:
       client:
         config:
+          # 게이트웨이 response-timeout(3s) 안에 순차 호출 2회가 끝나도록 잡는다: 2 x (300 + 1100) = 2.8s
           default:
-            connectTimeout: 2000
-            readTimeout: 3000
+            connectTimeout: 300
+            readTimeout: 1100
             loggerLevel: BASIC
 
 springdoc:

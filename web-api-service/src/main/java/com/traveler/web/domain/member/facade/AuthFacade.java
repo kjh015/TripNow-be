@@ -1,6 +1,6 @@
 package com.traveler.web.domain.member.facade;
 
-import com.traveler.web.domain.member.adaptor.AuthClientAdaptor;
+import com.traveler.web.domain.member.adapter.AuthClientAdapter;
 import com.traveler.web.domain.member.client.dto.request.AuthClientRequest;
 import com.traveler.web.domain.member.client.dto.response.AuthClientResponse;
 import com.traveler.web.domain.member.dto.request.AuthRequest;
@@ -14,14 +14,14 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class AuthFacade {
-    private final AuthClientAdaptor authClientAdaptor;
+    private final AuthClientAdapter authClientAdapter;
     private final AuthMapper authMapper;
     private final AuthHttpSupport authHttpSupport;
 
     public AuthResponse.LoginDTO login(AuthRequest.LoginDTO dto, HttpServletResponse response) {
         AuthClientRequest.LoginDTO clientRequest = authMapper.toClientLoginRequest(dto);
 
-        AuthClientResponse.LoginResult clientResponse = authClientAdaptor.login(clientRequest);
+        AuthClientResponse.LoginResult clientResponse = authClientAdapter.login(clientRequest);
 
         // BFF에서 브라우저 응답 헤더 및 쿠키 굽기
         authHttpSupport.setAuthResponse(response, clientResponse.tokens());
@@ -31,7 +31,7 @@ public class AuthFacade {
 
     public void logout(HttpServletResponse response) {
         try {
-            authClientAdaptor.logout();
+            authClientAdapter.logout();
         } finally {
             authHttpSupport.clearAuthResponse(response);
         }
@@ -40,7 +40,7 @@ public class AuthFacade {
     public AuthResponse.LoginDTO reissue(String refreshToken, HttpServletResponse response) {
         AuthClientRequest.ReissueDTO clientRequest = authMapper.toClientReissueDTO(refreshToken);
 
-        AuthClientResponse.LoginResult clientResponse = authClientAdaptor.reissue(clientRequest);
+        AuthClientResponse.LoginResult clientResponse = authClientAdapter.reissue(clientRequest);
 
         authHttpSupport.setAuthResponse(response, clientResponse.tokens());
 
@@ -49,7 +49,7 @@ public class AuthFacade {
 
     public AuthResponse.LoginDTO oauthLoginByCodeData(
             AuthClientRequest.OauthLoginDTO oauthLoginReq, HttpServletResponse response) {
-        AuthClientResponse.LoginResult loginResult = authClientAdaptor.oauthLogin(oauthLoginReq);
+        AuthClientResponse.LoginResult loginResult = authClientAdapter.oauthLogin(oauthLoginReq);
         authHttpSupport.setAuthResponse(response, loginResult.tokens());
         return authMapper.toResponseLoginDTO(loginResult.loginInfo());
     }

@@ -1,4 +1,4 @@
-package com.traveler.web.domain.useractivity.adaptor;
+package com.traveler.web.domain.useractivity.adapter;
 
 import com.traveler.common.core.response.PageResponse;
 import com.traveler.web.domain.useractivity.client.HistoryClient;
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class HistoryClientAdaptor {
+public class HistoryClientAdapter {
     private final HistoryClient historyClient;
 
     public PageResponse<HistoryClientResponse.ListDTO> getHistories(

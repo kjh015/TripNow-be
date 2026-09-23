@@ -1,4 +1,4 @@
-package com.traveler.web.domain.useractivity.adaptor;
+package com.traveler.web.domain.useractivity.adapter;
 
 import com.traveler.common.core.response.PageResponse;
 import com.traveler.web.domain.useractivity.client.LogProcessClient;
@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class LogProcessClientAdaptor {
+public class LogProcessClientAdapter {
     private final LogProcessClient logProcessClient;
 
     public LogProcessClientResponse.CreateDTO createLogProcess(LogProcessClientRequest.CreateDTO dto) {

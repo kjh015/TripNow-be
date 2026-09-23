@@ -1,4 +1,4 @@
-package com.traveler.web.domain.member.adaptor;
+package com.traveler.web.domain.member.adapter;
 
 import com.traveler.web.domain.member.client.AuthClient;
 import com.traveler.web.domain.member.client.dto.request.AuthClientRequest;
@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class AuthClientAdaptor {
+public class AuthClientAdapter {
     private final AuthClient authClient;
 
     public AuthClientResponse.LoginResult login(AuthClientRequest.LoginDTO dto) {

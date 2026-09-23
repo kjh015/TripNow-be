@@ -21,9 +21,10 @@ spring:
           enabled: true
       client:
         config:
+          # 게이트웨이 기본 response-timeout(5s) 안에 순차 호출 2회가 끝나도록 잡는다: 2 x (500 + 1800) = 4.6s
           default:
-            connectTimeout: 3000
-            readTimeout: 5000
+            connectTimeout: 500
+            readTimeout: 1800
   security:
     oauth2:
       client:

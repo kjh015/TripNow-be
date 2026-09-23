@@ -1,4 +1,4 @@
-package com.traveler.web.domain.useractivity.adaptor;
+package com.traveler.web.domain.useractivity.adapter;
 
 import com.traveler.common.core.response.PageResponse;
 import com.traveler.web.domain.useractivity.client.DedupRuleClient;
@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class DedupRuleClientAdaptor {
+public class DedupRuleClientAdapter {
     private final DedupRuleClient dedupRuleClient;
 
     public DedupRuleClientResponse.CreateDTO createDedupRule(Long logProcessId, DedupRuleClientRequest.CreateDTO dto) {

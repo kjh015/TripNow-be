@@ -1,4 +1,4 @@
-package com.traveler.web.domain.member.adaptor;
+package com.traveler.web.domain.member.adapter;
 
 import com.traveler.common.core.response.PageResponse;
 import com.traveler.web.domain.member.client.AdminMemberClient;
@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class AdminMemberClientAdaptor {
+public class AdminMemberClientAdapter {
     private final AdminMemberClient adminMemberClient;
 
     public AdminMemberClientResponse.GrantAdminDTO grantAdminRole(Long memberId) {
