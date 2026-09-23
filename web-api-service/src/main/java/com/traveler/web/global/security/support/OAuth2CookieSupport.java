@@ -13,6 +13,7 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
+import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -20,10 +21,13 @@ public class OAuth2CookieSupport {
     private final boolean secureCookie;
     private final ObjectMapper objectMapper;
 
-    // ObjectMapper를 주입받아 사용합니다.
+    // 주입받은 ObjectMapper의 복사본에 Spring Security Jackson 모듈을 등록해 이 용도로만 사용합니다.
+    // (OAuth2AuthorizationRequest는 믹스인 없이 역직렬화하면 grantType이 복원되지 않음. 전역 ObjectMapper는 변경하지 않음)
     public OAuth2CookieSupport(@Value("${app.cookie.secure:true}") boolean secureCookie, ObjectMapper objectMapper) {
         this.secureCookie = secureCookie;
-        this.objectMapper = objectMapper;
+        this.objectMapper = objectMapper.copy();
+        this.objectMapper.registerModules(
+                SecurityJackson2Modules.getModules(getClass().getClassLoader()));
     }
 
     public Optional<Cookie> getCookie(HttpServletRequest request, String name) {
