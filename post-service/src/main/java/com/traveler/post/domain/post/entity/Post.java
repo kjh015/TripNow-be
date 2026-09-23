@@ -139,6 +139,7 @@ public class Post extends BaseEntity {
     }
 
     public void addComment(int star) {
+        validateNotDeleted();
         this.commentCount++;
         this.starSum += star;
         this.starAvg = (double) this.starSum / this.commentCount;
@@ -150,7 +151,9 @@ public class Post extends BaseEntity {
         this.starAvg = this.commentCount > 0 ? (double) this.starSum / this.commentCount : 0.0;
     }
 
+    // 삭제된 게시글의 댓글을 어드민이 지울 때는 AdminCommentService가 카운터 갱신 없이 처리하므로 이 메서드를 호출하지 않는다
     public void removeComment(int star) {
+        validateNotDeleted();
         if (this.commentCount > 0) {
             this.commentCount--;
             this.starSum -= star;

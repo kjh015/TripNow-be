@@ -23,13 +23,28 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     List<String> findImageKeysByPostIds(@Param("postIds") List<Long> postIds);
 
     @Query(
-            value = "SELECT p.id FROM Post p WHERE p.deleted_at <= :threshold AND p.is_deleted = true",
+            value = "SELECT p.id FROM post p WHERE p.deleted_at <= :threshold AND p.is_deleted = true",
             nativeQuery = true)
     Slice<Long> findExpiredPostIds(@Param("threshold") Instant threshold, Pageable pageable);
 
-    @Modifying(clearAutomatically = true)
-    @Query("DELETE FROM Post p WHERE p.id IN :postIds")
+    // 영구 삭제 대상은 대부분 소프트 삭제된 게시글이므로 @SQLRestriction을 타지 않는 네이티브 쿼리로 조회
+    @Query(
+            value = "SELECT p.travel_place_id FROM post p WHERE p.id IN :postIds AND p.travel_place_id IS NOT NULL",
+            nativeQuery = true)
+    List<Long> findTravelPlaceIdsByPostIds(@Param("postIds") List<Long> postIds);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM PostImage pi WHERE pi.post.id IN :postIds")
+    void hardDeletePostImagesByPostIds(@Param("postIds") List<Long> postIds);
+
+    // JPQL 벌크 DELETE에도 @SQLRestriction(is_deleted = false)이 붙어 소프트 삭제된 게시글이 지워지지 않으므로 네이티브 쿼리 사용
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "DELETE FROM post WHERE id IN :postIds", nativeQuery = true)
     void hardDeletePostsByIds(@Param("postIds") List<Long> postIds);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM TravelPlace tp WHERE tp.id IN :travelPlaceIds")
+    void hardDeleteTravelPlacesByIds(@Param("travelPlaceIds") List<Long> travelPlaceIds);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @QueryHints({@QueryHint(name = "jakarta.persistence.lock.timeout", value = "3000")})

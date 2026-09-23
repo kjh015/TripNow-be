@@ -8,6 +8,7 @@ import com.traveler.post.domain.post.entity.TravelPlace;
 import com.traveler.post.domain.post.mapper.PostMapper;
 import com.traveler.post.domain.post.mapper.TravelPlaceMapper;
 import com.traveler.post.domain.post.repository.PostRepository;
+import com.traveler.post.domain.post.support.PostHardDeleter;
 import com.traveler.post.domain.post.support.PostImageKeyValidator;
 import com.traveler.post.global.exception.PostServiceException;
 import com.traveler.post.global.exception.code.PostServiceErrorCode;
@@ -31,6 +32,7 @@ public class PostService {
     private final TravelPlaceMapper travelPlaceMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final PostImageKeyValidator postImageKeyValidator;
+    private final PostHardDeleter postHardDeleter;
     private final TransactionTemplate transactionTemplate;
 
     // S3 확인(headObject)이 DB 커넥션을 붙잡지 않도록 이미지 검증을 트랜잭션 밖에서 끝낸다
@@ -114,11 +116,8 @@ public class PostService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void deleteBatch(List<Long> ids) {
         if (ids == null || ids.isEmpty()) return;
-        // S3 이미지 조회
-        List<String> imageUrls = postRepository.findImageKeysByPostIds(ids);
-
-        // DB 벌크 삭제
-        postRepository.hardDeletePostsByIds(ids);
+        // DB 벌크 삭제(자식 행 포함)
+        List<String> imageUrls = postHardDeleter.hardDelete(ids);
 
         // S3 이미지 삭제 이벤트 발행
         if (!imageUrls.isEmpty()) {

@@ -22,6 +22,7 @@ import com.traveler.post.domain.post.enums.Region;
 import com.traveler.post.domain.post.mapper.PostMapper;
 import com.traveler.post.domain.post.mapper.TravelPlaceMapper;
 import com.traveler.post.domain.post.repository.PostRepository;
+import com.traveler.post.domain.post.support.PostHardDeleter;
 import com.traveler.post.domain.post.support.PostImageKeyValidator;
 import com.traveler.post.global.exception.PostServiceException;
 import com.traveler.post.global.exception.code.PostServiceErrorCode;
@@ -49,6 +50,7 @@ class PostServiceTest {
     private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
     private final S3Service s3Service = mock(S3Service.class);
     private final TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
+    private final PostHardDeleter postHardDeleter = mock(PostHardDeleter.class);
 
     private final PostService postService = new PostService(
             postRepository,
@@ -56,6 +58,7 @@ class PostServiceTest {
             travelPlaceMapper,
             eventPublisher,
             new PostImageKeyValidator(s3Service),
+            postHardDeleter,
             transactionTemplate);
 
     @BeforeEach
@@ -194,6 +197,31 @@ class PostServiceTest {
                 .isInstanceOf(PostServiceException.class);
 
         verifyNoInteractions(s3Service, transactionTemplate);
+    }
+
+    @Test
+    @DisplayName("배치 삭제: 공용 영구 삭제 경로를 쓰고 반환된 이미지 키로 삭제 이벤트를 발행한다")
+    void deleteBatchUsesHardDeleter() {
+        List<Long> ids = List.of(POST_ID, 11L);
+        PostEvent.ImagesDeleteBatch event = new PostEvent.ImagesDeleteBatch(null);
+        given(postHardDeleter.hardDelete(ids)).willReturn(List.of(OWN_KEY));
+        given(postMapper.toImageDeleteBatchEvent(POST_ID, List.of(OWN_KEY))).willReturn(event);
+
+        postService.deleteBatch(ids);
+
+        verify(postHardDeleter).hardDelete(ids);
+        verify(postRepository, never()).hardDeletePostsByIds(any());
+        verify(eventPublisher).publishEvent(event);
+    }
+
+    @Test
+    @DisplayName("배치 삭제: 이미지가 없으면 이미지 삭제 이벤트를 발행하지 않는다")
+    void deleteBatchWithoutImagesPublishesNothing() {
+        given(postHardDeleter.hardDelete(List.of(POST_ID))).willReturn(List.of());
+
+        postService.deleteBatch(List.of(POST_ID));
+
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     private static Post post(Long memberId) {
