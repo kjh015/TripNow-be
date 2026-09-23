@@ -33,6 +33,7 @@ import reactor.core.publisher.Mono;
 class JwtAuthenticationFilterTest {
 
     private static final KeyPair KEY_PAIR = Jwts.SIG.ES256.keyPair().build();
+    private static final String KID = "test-v1";
 
     private final GatewayFilter filter = createFilter();
     private final AtomicReference<HttpHeaders> downstream = new AtomicReference<>();
@@ -42,12 +43,14 @@ class JwtAuthenticationFilterTest {
     };
 
     private static GatewayFilter createFilter() {
-        String publicJwk =
-                Jwks.json(Jwks.builder().key((ECPublicKey) KEY_PAIR.getPublic()).build());
+        String publicJwk = Jwks.json(
+                Jwks.builder().key((ECPublicKey) KEY_PAIR.getPublic()).id(KID).build());
         TokenBlacklistValidator blacklistValidator = mock(TokenBlacklistValidator.class);
         given(blacklistValidator.checkBlacklist(anyString())).willReturn(Mono.empty());
         return new JwtAuthenticationFilter(
-                        new JwtTokenProvider(publicJwk), new AuthContextManager(), blacklistValidator)
+                        new JwtTokenProvider("{\"keys\":[" + publicJwk + "]}"),
+                        new AuthContextManager(),
+                        blacklistValidator)
                 .apply(new JwtAuthenticationFilter.Config());
     }
 
@@ -123,6 +126,9 @@ class JwtAuthenticationFilterTest {
     private static String token(String type, List<String> roles) {
         Instant now = Instant.now();
         JwtBuilder builder = Jwts.builder()
+                .header()
+                .keyId(KID)
+                .and()
                 .subject("42")
                 .claim(AuthConstants.CLAIM_ROLES, roles)
                 .issuedAt(Date.from(now))

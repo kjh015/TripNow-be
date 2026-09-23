@@ -9,15 +9,19 @@ import io.jsonwebtoken.security.Jwk;
 import io.jsonwebtoken.security.Jwks;
 import io.jsonwebtoken.security.PrivateJwk;
 import io.jsonwebtoken.security.SignatureException;
+import java.security.Key;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 @Component
 @Slf4j
@@ -28,29 +32,72 @@ public class JwtTokenProvider {
     private final long accessTokenExpireTime;
     private final long refreshTokenExpireTime;
 
+    /**
+     * @param privateJwk 서명에 쓰는 현재 개인 JWK(JSON). kid가 public-jwks에 있어야 한다
+     * @param publicJwks 검증에 쓰는 공개 JWK Set(JSON). 키 로테이션 중에는 옛 키와 새 키를 함께 넣는다
+     */
     public JwtTokenProvider(
             @Value("${app.jwt.private-jwk}") String privateJwk,
+            @Value("${app.jwt.public-jwks}") String publicJwks,
             @Value("${app.jwt.access-expiration}") long accessTokenExpireTime,
             @Value("${app.jwt.refresh-expiration}") long refreshTokenExpireTime) {
-        // 개인 JWK 하나로 서명키와 검증용 공개키를 함께 얻는다
         PrivateJwk<?, ?, ?> jwk = parsePrivateJwk(privateJwk);
-        var keyPair = jwk.toKeyPair();
-        PrivateKey signingKey = keyPair.getPrivate();
-        PublicKey verificationKey = keyPair.getPublic();
+        Map<String, PublicKey> publicKeys = parsePublicKeys(publicJwks);
+        // 새로 발급한 토큰을 스스로 검증하지 못하는 설정은 기동 시점에 막는다
+        if (!jwk.toKeyPair().getPublic().equals(publicKeys.get(jwk.getId()))) {
+            throw new IllegalStateException(
+                    "app.jwt.public-jwks 에 app.jwt.private-jwk 와 같은 kid의 공개키가 없거나 키가 다릅니다. kid=" + jwk.getId());
+        }
 
-        this.privateKey = signingKey;
+        this.privateKey = jwk.toKeyPair().getPrivate();
         this.keyId = jwk.getId();
-        this.jwtParser = Jwts.parser().verifyWith(verificationKey).build();
+        // 토큰 헤더의 kid로 검증 키를 고르므로 키 교체 전에 발급한 토큰도 검증할 수 있다
+        this.jwtParser = Jwts.parser()
+                .keyLocator(new LocatorAdapter<Key>() {
+                    @Override
+                    protected Key locate(JwsHeader header) {
+                        String kid = header.getKeyId();
+                        PublicKey key = kid == null ? null : publicKeys.get(kid);
+                        if (key == null) {
+                            throw new SignatureException("신뢰하는 공개키 중 kid와 일치하는 키가 없습니다. kid=" + kid);
+                        }
+                        return key;
+                    }
+                })
+                .build();
         this.accessTokenExpireTime = accessTokenExpireTime;
         this.refreshTokenExpireTime = refreshTokenExpireTime;
     }
 
     private static PrivateJwk<?, ?, ?> parsePrivateJwk(String json) {
         Jwk<?> jwk = Jwks.parser().build().parse(json);
-        if (jwk instanceof PrivateJwk<?, ?, ?> privateJwk) {
-            return privateJwk;
+        if (!(jwk instanceof PrivateJwk<?, ?, ?> privateJwk)) {
+            throw new IllegalStateException("app.jwt.private-jwk 에 개인키(d)가 없습니다. 공개 JWK를 설정하지 않았는지 확인하세요.");
         }
-        throw new IllegalStateException("app.jwt.private-jwk 에 개인키(d)가 없습니다. 공개 JWK를 설정하지 않았는지 확인하세요.");
+        if (!StringUtils.hasText(privateJwk.getId())) {
+            throw new IllegalStateException("app.jwt.private-jwk 에 kid가 없습니다. public-jwks와 같은 kid를 지정하세요.");
+        }
+        return privateJwk;
+    }
+
+    private static Map<String, PublicKey> parsePublicKeys(String publicJwks) {
+        if (!StringUtils.hasText(publicJwks)) {
+            throw new IllegalStateException("app.jwt.public-jwks 를 설정하세요.");
+        }
+        Map<String, PublicKey> publicKeys = new HashMap<>();
+        for (Jwk<?> jwk : Jwks.setParser().build().parse(publicJwks).getKeys()) {
+            String kid = jwk.getId();
+            if (!StringUtils.hasText(kid)) {
+                throw new IllegalStateException("공개 JWK에 kid가 없습니다. 모든 키에 kid를 지정하세요.");
+            }
+            if (!(jwk.toKey() instanceof PublicKey publicKey)) {
+                throw new IllegalStateException("app.jwt.public-jwks 에는 공개 JWK만 넣으세요. kid=" + kid);
+            }
+            if (publicKeys.putIfAbsent(kid, publicKey) != null) {
+                throw new IllegalStateException("공개 JWK의 kid가 중복됩니다. kid=" + kid);
+            }
+        }
+        return Map.copyOf(publicKeys);
     }
 
     public String createAccessToken(Long userId, List<RoleType> roles) {
@@ -73,9 +120,7 @@ public class JwtTokenProvider {
                 .expiration(Date.from(now.plusMillis(validity)))
                 .signWith(privateKey, Jwts.SIG.ES256);
 
-        if (keyId != null) {
-            builder.header().keyId(keyId); // 키 로테이션 대비
-        }
+        builder.header().keyId(keyId); // 게이트웨이가 kid로 검증 키를 고른다 (키 로테이션 대비)
         return builder.compact();
     }
 

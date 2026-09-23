@@ -16,7 +16,9 @@ public enum ApiGatewayErrorCode implements BaseErrorCode {
     JWT_NOT_FOUND(401, "GATEWAY401_4", "JWT 토큰을 찾을 수 없습니다."),
     INVALID_TOKEN_TYPE(401, "GATEWAY401_6", "토큰 타입이 일치하지 않거나 비어있습니다."),
     MALFORMED_JWT(401, "GATEWAY401_7", "잘못된 구조의 JWT 토큰입니다."),
-    BLACKLISTED_TOKEN(401, "GATEWAY401_8", "로그아웃된 토큰입니다. 다시 로그인해주세요.");
+    BLACKLISTED_TOKEN(401, "GATEWAY401_8", "로그아웃된 토큰입니다. 다시 로그인해주세요."),
+    // Auth Store
+    AUTH_STORE_UNAVAILABLE(503, "GATEWAY503_1", "인증 정보를 확인할 수 없습니다. 잠시 후 다시 시도해주세요.");
 
     private final int status;
     private final String code;

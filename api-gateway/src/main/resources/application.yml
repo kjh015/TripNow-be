@@ -12,6 +12,9 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: 6379
+      # 블랙리스트 조회가 인증 경로에 있으므로 무응답 Redis에 오래 매달리지 않게 한다 (Lettuce 기본값 60s)
+      timeout: 500ms
+      connect-timeout: 500ms
 
   web:
     resources:
@@ -116,7 +119,8 @@ eureka:
 #security key
 app:
   jwt:
-    public-jwk: ${JWT_PUBLIC_JWK}
+    # 공개 JWK Set({"keys":[...]}). 토큰 헤더의 kid로 검증 키를 고른다
+    public-jwks: ${JWT_PUBLIC_JWKS}
 
 management:
   endpoints:
