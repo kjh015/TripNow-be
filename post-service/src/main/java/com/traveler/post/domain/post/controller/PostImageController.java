@@ -7,6 +7,7 @@ import com.traveler.common.core.code.SuccessCode;
 import com.traveler.common.core.response.ApiResponse;
 import com.traveler.post.domain.post.dto.response.PostImageResponse;
 import com.traveler.post.domain.post.service.PostImageService;
+import com.traveler.post.global.s3.validation.AllowedImageContentType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.constraints.NotBlank;
@@ -37,7 +38,7 @@ public class PostImageController {
             @Parameter(description = "Content-Type", example = "image/jpeg")
                     @RequestParam
                     @NotBlank(message = "Content-Type은 필수입니다")
-                    @Pattern(regexp = "^image/(jpeg|png|gif|webp)$", message = "허용되지 않은 파일 형식입니다")
+                    @AllowedImageContentType
                     String contentType,
             @Parameter(hidden = true) @LoginUser UserContext user) {
         return ApiResponse.onSuccess(

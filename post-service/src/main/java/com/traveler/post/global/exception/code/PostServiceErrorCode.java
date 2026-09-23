@@ -13,6 +13,9 @@ public enum PostServiceErrorCode implements BaseErrorCode {
     POST_IMAGE_DUPLICATE(400, "POST400_2", "중복된 이미지 URL이 포함되어 있습니다."),
     POST_ALREADY_DELETED(400, "POST400_3", "이미 삭제된 게시물입니다."),
     POST_NOT_DELETED(400, "POST400_4", "삭제되지 않은 게시물입니다."),
+    POST_IMAGE_INVALID_KEY(400, "POST400_5", "유효하지 않거나 본인이 업로드하지 않은 이미지 키입니다."),
+    POST_IMAGE_NOT_UPLOADED(400, "POST400_6", "업로드되지 않은 이미지가 포함되어 있습니다."),
+    POST_IMAGE_TOO_LARGE(400, "POST400_7", "이미지 크기는 10MB를 초과할 수 없습니다."),
 
     // Domain - Comment
     COMMENT_BAD_REQUEST(400, "COMMENT400_1", "잘못된 입력 값입니다."),

@@ -128,6 +128,16 @@ public class Post extends BaseEntity {
         return keysToDelete;
     }
 
+    // 요청 키 중 현재 게시글에 붙어 있지 않은 키(= 새로 추가될 키)
+    public Set<String> findNewImageKeys(List<String> keys) {
+        if (keys == null) return Collections.emptySet();
+        Set<String> currentKeys =
+                this.images.stream().map(PostImage::getImageKey).collect(Collectors.toSet());
+        return keys.stream()
+                .filter(key -> !currentKeys.contains(key))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
     public void addComment(int star) {
         this.commentCount++;
         this.starSum += star;
