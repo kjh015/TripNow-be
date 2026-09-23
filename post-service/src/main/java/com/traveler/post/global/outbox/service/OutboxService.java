@@ -45,7 +45,8 @@ public class OutboxService {
 
     public void publish(OutboxEvent event) {
         String jsonPayload = serializePayload(event.payload());
-        outboxRelay.relayAsync(event.eventId(), event.topic(), event.eventType(), jsonPayload);
+        outboxRelay.relayAsync(
+                event.eventId(), event.topic(), partitionKey(event.aggregateId()), event.eventType(), jsonPayload);
     }
 
     public void retry() {
@@ -64,7 +65,11 @@ public class OutboxService {
             for (Outbox outbox : claimed) {
                 try {
                     outboxRelay.relaySync(
-                            outbox.getEventId(), outbox.getTopic(), outbox.getEventType(), outbox.getPayload());
+                            outbox.getEventId(),
+                            outbox.getTopic(),
+                            partitionKey(outbox.getAggregateId()),
+                            outbox.getEventType(),
+                            outbox.getPayload());
                 } catch (Exception e) {
                     log.error("Outbox 재시도 중 오류 발생: id={}", outbox.getId(), e);
                 }
@@ -88,6 +93,11 @@ public class OutboxService {
             totalDeleted += targetIds.getNumberOfElements();
         }
         log.info("[OutboxCleanup] 총 {}건의 완료된 메시지 정리 완료", totalDeleted);
+    }
+
+    // 같은 aggregate(게시글·댓글·좋아요)의 이벤트가 같은 파티션에 들어가도록 aggregateId를 키로 쓴다
+    private static String partitionKey(Long aggregateId) {
+        return aggregateId == null ? null : aggregateId.toString();
     }
 
     private String serializePayload(Object payload) {
