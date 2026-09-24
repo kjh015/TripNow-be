@@ -3,8 +3,6 @@ name: CI
 on:
   pull_request:
     branches: [ "main", "develop" ]
-  push:
-    branches: [ "develop" ]
     paths-ignore:
       - "**.md"
       - "docs/**"
@@ -19,6 +17,7 @@ concurrency:
 
 permissions:
   contents: read
+  pull-requests: read    # dorny/paths-filter가 PR 변경 파일 목록을 조회할 때 필요
 
 jobs:
   build:
@@ -59,9 +58,42 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # 도커 이미지가 실제로 빌드되는지까지 확인합니다.
+  # 컴파일 자체는 build 잡이 이미 검증하므로, 이미지 빌드에 영향을 주는 파일이
+  # 바뀐 경우(또는 수동 실행)에만 돌립니다.
   # ---------------------------------------------------------------------------
+  docker-changes:
+    name: Detect Docker-related changes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      docker: ${{ steps.filter.outputs.docker }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Filter changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            docker:
+              - 'Dockerfile*'
+              - '.dockerignore'
+              - 'settings.gradle'
+              - 'build.gradle'
+              - 'gradle.properties'
+              - 'gradle/**'
+              - '*/build.gradle'
+              - 'common/*/build.gradle'
+              - '.github/workflows/ci.yml'
+
   docker-build-check:
     name: Docker build check (api-gateway)
+    needs: docker-changes
+    # 수동 실행에서는 docker-changes 가 skip 되므로 always() 로 평가를 이어갑니다.
+    if: >-
+      always() &&
+      (github.event_name == 'workflow_dispatch' || needs.docker-changes.outputs.docker == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -80,4 +112,4 @@ jobs:
           push: false
           platforms: linux/amd64
           cache-from: type=gha,scope=api-gateway
-          cache-to: type=gha,mode=max,scope=ci-api-gateway
+          cache-to: type=gha,mode=max,scope=api-gateway
