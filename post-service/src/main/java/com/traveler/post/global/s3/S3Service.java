@@ -4,6 +4,7 @@ import com.traveler.post.global.exception.PostServiceException;
 import com.traveler.post.global.exception.code.PostServiceErrorCode;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,9 +27,7 @@ public class S3Service {
     @Value("${aws.s3.presigned-url.duration-minutes:10}")
     private int presignedUrlDurationMinutes;
 
-    private static final List<String> ALLOWED_CONTENT_TYPES =
-            List.of("image/jpeg", "image/png", "image/gif", "image/webp");
-    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    public static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     private static final int S3_DELETE_BATCH_SIZE = 1000; // S3 API 제약
 
     public void deleteFilesByKeys(List<String> keys) {
@@ -77,21 +76,38 @@ public class S3Service {
         return path.startsWith("/") ? path.substring(1) : path;
     }
 
+    /** 객체가 있으면 크기(byte)를, 없으면 빈 값을 돌려준다. */
+    public Optional<Long> findObjectSize(String key) {
+        try {
+            HeadObjectResponse response = s3Client.headObject(
+                    HeadObjectRequest.builder().bucket(bucket).key(key).build());
+            return Optional.of(response.contentLength());
+        } catch (NoSuchKeyException e) {
+            return Optional.empty();
+        } catch (S3Exception e) {
+            // HEAD 응답에는 본문이 없어 404가 NoSuchKeyException으로 변환되지 않을 수 있다
+            if (e.statusCode() == 404) {
+                return Optional.empty();
+            }
+            throw e;
+        }
+    }
+
     public String generatePresignedUrl(String key, String contentType) {
         // key 검증: 상대 경로나 특수 문자 차단
         if (key.contains("..") || key.startsWith("/")) {
             throw new PostServiceException(PostServiceErrorCode.S3_INVALID_KEY);
         }
         // contentType 검증
-        if (!ALLOWED_CONTENT_TYPES.contains(contentType)) {
+        if (!ImageType.isAllowedContentType(contentType)) {
             throw new PostServiceException(PostServiceErrorCode.S3_INVALID_CONTENT_TYPE);
         }
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(bucket)
                 .key(key)
                 .contentType(contentType)
-                //                .contentLength(MAX_FILE_SIZE)
                 .build();
+        // Presigned PUT은 업로드 크기를 제한할 수 없다. 크기(MAX_FILE_SIZE)는 게시글 저장 시 findObjectSize로 검증한다.
 
         PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
                 .signatureDuration(Duration.ofMinutes(presignedUrlDurationMinutes))

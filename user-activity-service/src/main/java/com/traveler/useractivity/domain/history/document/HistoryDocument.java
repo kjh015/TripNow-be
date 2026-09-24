@@ -3,11 +3,7 @@ package com.traveler.useractivity.domain.history.document;
 import com.traveler.useractivity.domain.history.document.vo.HistoryFailInfo;
 import java.time.Instant;
 import java.util.Map;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.*;
 
@@ -25,7 +21,7 @@ public class HistoryDocument {
     @Id
     private String id;
 
-    // 색인 시각 (logstash가 밀리초 정밀도로 기록)
+    // 정제 완료 시각(Logstash가 createdAt으로 채움)
     @Field(name = "@timestamp", type = FieldType.Date, format = DateFormat.strict_date_optional_time)
     private Instant timestamp;
 

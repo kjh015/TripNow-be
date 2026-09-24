@@ -1,5 +1,14 @@
 package com.traveler.useractivity.domain.rule.process.service.command;
 
+import com.traveler.useractivity.domain.rule.dedup.dto.event.DedupRuleEvent;
+import com.traveler.useractivity.domain.rule.dedup.entity.DedupRule;
+import com.traveler.useractivity.domain.rule.dedup.repository.DedupRuleRepository;
+import com.traveler.useractivity.domain.rule.filter.dto.event.FilterRuleEvent;
+import com.traveler.useractivity.domain.rule.filter.entity.FilterRule;
+import com.traveler.useractivity.domain.rule.filter.repository.FilterRuleRepository;
+import com.traveler.useractivity.domain.rule.format.dto.event.FormatRuleEvent;
+import com.traveler.useractivity.domain.rule.format.entity.FormatRule;
+import com.traveler.useractivity.domain.rule.format.repository.FormatRuleRepository;
 import com.traveler.useractivity.domain.rule.process.dto.event.LogProcessEvent;
 import com.traveler.useractivity.domain.rule.process.dto.request.LogProcessRequest;
 import com.traveler.useractivity.domain.rule.process.dto.response.LogProcessResponse;
@@ -18,6 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class LogProcessCommandService {
     private final LogProcessRepository logProcessRepository;
+    private final FormatRuleRepository formatRuleRepository;
+    private final FilterRuleRepository filterRuleRepository;
+    private final DedupRuleRepository dedupRuleRepository;
     private final LogProcessMapper logProcessMapper;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -59,7 +71,15 @@ public class LogProcessCommandService {
 
         logProcess.delete();
 
+        // 하위 규칙도 함께 소프트 삭제해 관리 화면·파이프라인 어디에도 남지 않게 한다
+        formatRuleRepository.findAllByLogProcessId(logProcessId).forEach(FormatRule::delete);
+        filterRuleRepository.findAllByLogProcessId(logProcessId).forEach(FilterRule::delete);
+        dedupRuleRepository.findAllByLogProcessId(logProcessId).forEach(DedupRule::delete);
+
         eventPublisher.publishEvent(new LogProcessEvent.EvictByCode());
+        eventPublisher.publishEvent(new FormatRuleEvent.Evict(logProcessId));
+        eventPublisher.publishEvent(new FilterRuleEvent.Evict(logProcessId));
+        eventPublisher.publishEvent(new DedupRuleEvent.Evict(logProcessId));
 
         return logProcessMapper.toDeleteDTO(logProcess);
     }

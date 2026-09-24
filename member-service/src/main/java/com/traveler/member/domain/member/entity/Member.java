@@ -25,7 +25,12 @@ import org.hibernate.annotations.BatchSize;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
         name = "member",
-        indexes = {@Index(name = "idx_member_deleted_at_status", columnList = "is_deleted, deleted_at")})
+        indexes = {@Index(name = "idx_member_deleted_at_status", columnList = "is_deleted, deleted_at")},
+        uniqueConstraints = {
+            @UniqueConstraint(
+                    name = "uk_member_provider_provider_id",
+                    columnNames = {"provider", "provider_id"})
+        })
 public class Member extends BaseEntity {
 
     @Column(unique = true, length = 50)
@@ -44,7 +49,6 @@ public class Member extends BaseEntity {
 
     private LocalDate birthDate;
 
-    @Column(unique = true)
     private String providerId;
 
     @Enumerated(EnumType.STRING)

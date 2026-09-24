@@ -62,6 +62,9 @@ dependencies {
     // Redis
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
+    // Security Crypto (PasswordEncoder)
+    implementation 'org.springframework.security:spring-security-crypto'
+
 
 }
 

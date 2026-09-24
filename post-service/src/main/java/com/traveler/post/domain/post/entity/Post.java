@@ -128,7 +128,18 @@ public class Post extends BaseEntity {
         return keysToDelete;
     }
 
+    // 요청 키 중 현재 게시글에 붙어 있지 않은 키(= 새로 추가될 키)
+    public Set<String> findNewImageKeys(List<String> keys) {
+        if (keys == null) return Collections.emptySet();
+        Set<String> currentKeys =
+                this.images.stream().map(PostImage::getImageKey).collect(Collectors.toSet());
+        return keys.stream()
+                .filter(key -> !currentKeys.contains(key))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
     public void addComment(int star) {
+        validateNotDeleted();
         this.commentCount++;
         this.starSum += star;
         this.starAvg = (double) this.starSum / this.commentCount;
@@ -140,7 +151,9 @@ public class Post extends BaseEntity {
         this.starAvg = this.commentCount > 0 ? (double) this.starSum / this.commentCount : 0.0;
     }
 
+    // 삭제된 게시글의 댓글을 어드민이 지울 때는 AdminCommentService가 카운터 갱신 없이 처리하므로 이 메서드를 호출하지 않는다
     public void removeComment(int star) {
+        validateNotDeleted();
         if (this.commentCount > 0) {
             this.commentCount--;
             this.starSum -= star;

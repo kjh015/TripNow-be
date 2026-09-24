@@ -26,7 +26,13 @@ public class PostController {
     private final PostService postService;
 
     @Operation(summary = "게시글 생성", description = "새로운 게시글을 작성합니다. 이미지는 S3 키 리스트로 전달합니다.")
-    @ApiErrorCodeExamples(post = {PostServiceErrorCode.POST_IMAGE_DUPLICATE})
+    @ApiErrorCodeExamples(
+            post = {
+                PostServiceErrorCode.POST_IMAGE_DUPLICATE,
+                PostServiceErrorCode.POST_IMAGE_INVALID_KEY,
+                PostServiceErrorCode.POST_IMAGE_NOT_UPLOADED,
+                PostServiceErrorCode.POST_IMAGE_TOO_LARGE
+            })
     @RequireAuth
     @PostMapping
     public ApiResponse<PostResponse.CreateDTO> createPost(
@@ -40,6 +46,9 @@ public class PostController {
             post = {
                 PostServiceErrorCode.POST_NOT_FOUND,
                 PostServiceErrorCode.POST_IMAGE_DUPLICATE,
+                PostServiceErrorCode.POST_IMAGE_INVALID_KEY,
+                PostServiceErrorCode.POST_IMAGE_NOT_UPLOADED,
+                PostServiceErrorCode.POST_IMAGE_TOO_LARGE,
                 PostServiceErrorCode.POST_ALREADY_DELETED
             })
     @RequireAuth

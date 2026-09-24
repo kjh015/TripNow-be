@@ -3,7 +3,6 @@ package com.traveler.useractivity.domain.process.format.service;
 import com.traveler.useractivity.domain.process.format.engine.UrlQueryParser;
 import com.traveler.useractivity.domain.process.format.message.RawLog;
 import com.traveler.useractivity.domain.process.format.model.ActiveFormatRule;
-import com.traveler.useractivity.domain.rule.format.repository.FormatRuleRepository;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +15,6 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class FormatService {
     private final UrlQueryParser urlQueryParser;
-    private final FormatRuleRepository formatRuleRepository;
 
     /**
      * 원본 로그에서 매핑의 재료가 될 데이터를 추출하고,
@@ -31,10 +29,12 @@ public class FormatService {
             return Map.of();
         }
 
-        // 조회된 규칙들을 순차적으로 적용하여 최종 포맷팅된 로그 생성
+        // 기본값을 먼저 깔고(뒤 규칙의 기본값이 우선), 그 위에 매핑 값을 덮어써 최종 포맷팅된 로그 생성
         Map<String, String> formattedLog = new HashMap<>();
         for (ActiveFormatRule rule : activeFormatRules) {
             putDefaultValues(rule.defaultValues(), formattedLog);
+        }
+        for (ActiveFormatRule rule : activeFormatRules) {
             putFieldMappings(rule.fieldMappings(), source, formattedLog);
         }
 
@@ -56,6 +56,7 @@ public class FormatService {
 
     /**
      * 설정된 기본값(defaultValues)을 포맷팅된 로그에 추가합니다.
+     * 매핑 적용 전에 호출되어, 매핑 값이 없는 필드의 바닥값 역할을 합니다.
      */
     private void putDefaultValues(Map<String, String> defaultValues, Map<String, String> formattedLog) {
         if (defaultValues == null || defaultValues.isEmpty()) {
