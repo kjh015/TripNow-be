@@ -2,8 +2,9 @@
 # TripNow CD — Build → ECR push → ECS deploy
 #
 # 설계 근거
-#  - ECS 네트워크 모드가 host + 인스턴스 1대 → 배포 옵션이 0%/100%로 강제됨
-#    → 배포는 반드시 "순차"로. 동시에 두 서비스를 내리면 메모리·포트가 겹칩니다.
+#  - ECS 네트워크 모드는 bridge(discovery·redis·dozzle만 host), 배포 옵션은 100%/200%
+#    → 교체 중에는 새 태스크 몫의 메모리가 추가로 필요합니다. 인스턴스 1대의 여유로는
+#      한 번에 한 서비스만 두 벌 띄울 수 있으므로 배포는 반드시 "순차"로 합니다.
 #  - 빌드(GitHub 러너)는 병렬로 해도 무방하므로 build 잡과 deploy 잡을 분리했습니다.
 #  - 태스크 정의는 콘솔에서 관리 → describe 해서 "이미지 URI만" 교체합니다.
 #    (환경 변수·secrets 블록은 절대 워크플로에서 새로 정의하지 않습니다)
@@ -31,7 +32,7 @@ on:
         required: false
         default: ""
 
-# 단일 인스턴스라 배포가 겹치면 포트 충돌이 납니다. 브랜치와 무관하게 하나의 그룹으로 직렬화하고,
+# 단일 인스턴스라 배포가 겹치면 메모리가 부족해 새 태스크가 PENDING에 머뭅니다. 브랜치와 무관하게 하나의 그룹으로 직렬화하고,
 # 진행 중인 배포는 절대 취소하지 않습니다(중간에 끊기면 서비스가 내려간 상태로 남습니다).
 concurrency:
   group: tripnow-ecs-deploy
@@ -301,12 +302,12 @@ jobs:
                       --query 'taskDefinition.taskDefinitionArn' --output text)
             echo "registered: $NEW_TD"
 
-            # 4) 서비스 업데이트. 배포 옵션(0%/100%)은 서비스 설정을 그대로 따릅니다.
+            # 4) 서비스 업데이트. 배포 옵션(100%/200%)은 서비스 설정을 그대로 따릅니다.
             aws ecs update-service --cluster "$ECS_CLUSTER" --service "$NAME" \
               --task-definition "$NEW_TD" >/dev/null
 
             # 5) 안정화 대기. aws ecs wait 는 15초 × 40회(10분)라 최대 3회 반복합니다.
-            #    host 모드 + 0%/100% 라 기존 태스크가 내려간 뒤 새 태스크가 뜹니다(1~2분 다운타임).
+            #    100%/200% 라 새 태스크가 정상(헬스체크 통과)이 된 뒤 기존 태스크를 내립니다.
             OK=0
             for ATTEMPT in 1 2 3; do
               if aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$NAME"; then

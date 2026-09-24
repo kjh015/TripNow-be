@@ -52,7 +52,8 @@ public class FormatRuleQueryService {
         }
 
         List<FormatRule> activeRules =
-                formatRuleRepository.findAllByLogProcessIdAndIsActiveTrueOrderByIdAsc(logProcessId);
+                formatRuleRepository.findAllByLogProcessIdAndLogProcessIsDeletedFalseAndIsActiveTrueOrderByIdAsc(
+                        logProcessId);
 
         Set<String> uniqueFields = new HashSet<>();
 

@@ -1,8 +1,6 @@
 package com.traveler.web.domain.post.facade;
 
-import com.traveler.common.core.response.ApiResponse;
-import com.traveler.web.domain.post.client.PostClient;
-import com.traveler.web.domain.post.client.dto.response.PostClientResponse;
+import com.traveler.web.domain.post.adapter.PostClientAdapter;
 import com.traveler.web.domain.post.dto.request.PostRequest;
 import com.traveler.web.domain.post.dto.response.PostResponse;
 import com.traveler.web.domain.post.mapper.PostMapper;
@@ -12,28 +10,22 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class PostFacade {
-    private final PostClient postClient;
+    private final PostClientAdapter postClientAdapter;
     private final PostMapper postMapper;
 
     public PostResponse.CreateDTO createPost(PostRequest.CreateDTO dto) {
-        ApiResponse<PostClientResponse.CreateDTO> response =
-                postClient.createPost(postMapper.toCreateClientRequest(dto));
-        return postMapper.toCreateResponse(response.result());
+        return postMapper.toCreateResponse(postClientAdapter.createPost(postMapper.toCreateClientRequest(dto)));
     }
 
     public PostResponse.UpdateDTO updatePost(Long postId, PostRequest.UpdateDTO dto) {
-        ApiResponse<PostClientResponse.UpdateDTO> response =
-                postClient.updatePost(postId, postMapper.toUpdateClientRequest(dto));
-        return postMapper.toUpdateResponse(response.result());
+        return postMapper.toUpdateResponse(postClientAdapter.updatePost(postId, postMapper.toUpdateClientRequest(dto)));
     }
 
     public PostResponse.DeleteDTO deletePost(Long postId) {
-        ApiResponse<PostClientResponse.DeleteDTO> response = postClient.deletePost(postId);
-        return postMapper.toDeleteResponse(response.result());
+        return postMapper.toDeleteResponse(postClientAdapter.deletePost(postId));
     }
 
     public PostResponse.PresignedUrlDTO getPresignedUrl(String fileName, String contentType) {
-        ApiResponse<PostClientResponse.PresignedUrlDTO> response = postClient.getPresignedUrl(fileName, contentType);
-        return postMapper.toPresignedUrlResponse(response.result());
+        return postMapper.toPresignedUrlResponse(postClientAdapter.getPresignedUrl(fileName, contentType));
     }
 }

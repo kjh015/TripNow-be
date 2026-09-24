@@ -62,7 +62,11 @@ dependencies {
     // Redis
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
+    // Security Crypto (PasswordEncoder)
+    implementation 'org.springframework.security:spring-security-crypto'
 
+    // Actuator (ECS 컨테이너 헬스체크: /actuator/health/liveness)
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
 }
 
 dependencyManagement {

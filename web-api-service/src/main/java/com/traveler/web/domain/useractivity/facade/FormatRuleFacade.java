@@ -1,7 +1,7 @@
 package com.traveler.web.domain.useractivity.facade;
 
 import com.traveler.common.core.response.PageResponse;
-import com.traveler.web.domain.useractivity.adaptor.FormatRuleClientAdaptor;
+import com.traveler.web.domain.useractivity.adapter.FormatRuleClientAdapter;
 import com.traveler.web.domain.useractivity.client.dto.response.FormatRuleClientResponse;
 import com.traveler.web.domain.useractivity.dto.request.FormatRuleRequest;
 import com.traveler.web.domain.useractivity.dto.response.FormatRuleResponse;
@@ -13,40 +13,40 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class FormatRuleFacade {
-    private final FormatRuleClientAdaptor formatRuleClientAdaptor;
+    private final FormatRuleClientAdapter formatRuleClientAdapter;
     private final FormatRuleMapper formatRuleMapper;
 
     public FormatRuleResponse.CreateDTO createFormatRule(Long logProcessId, FormatRuleRequest.CreateDTO dto) {
         FormatRuleClientResponse.CreateDTO clientResponse =
-                formatRuleClientAdaptor.createFormatRule(logProcessId, formatRuleMapper.toClientCreateDTO(dto));
+                formatRuleClientAdapter.createFormatRule(logProcessId, formatRuleMapper.toClientCreateDTO(dto));
         return formatRuleMapper.toResponseCreateDTO(clientResponse);
     }
 
     public FormatRuleResponse.UpdateDTO updateFormatRule(Long formatRuleId, FormatRuleRequest.UpdateDTO dto) {
         FormatRuleClientResponse.UpdateDTO clientResponse =
-                formatRuleClientAdaptor.updateFormatRule(formatRuleId, formatRuleMapper.toClientUpdateDTO(dto));
+                formatRuleClientAdapter.updateFormatRule(formatRuleId, formatRuleMapper.toClientUpdateDTO(dto));
         return formatRuleMapper.toResponseUpdateDTO(clientResponse);
     }
 
     public FormatRuleResponse.DeleteDTO deleteFormatRule(Long formatRuleId) {
-        FormatRuleClientResponse.DeleteDTO clientResponse = formatRuleClientAdaptor.deleteFormatRule(formatRuleId);
+        FormatRuleClientResponse.DeleteDTO clientResponse = formatRuleClientAdapter.deleteFormatRule(formatRuleId);
         return formatRuleMapper.toResponseDeleteDTO(clientResponse);
     }
 
     public PageResponse<FormatRuleResponse.ListDTO> getFormatRules(Long logProcessId, Pageable pageable) {
         PageResponse<FormatRuleClientResponse.ListDTO> clientResponse =
-                formatRuleClientAdaptor.getFormatRules(logProcessId, pageable);
+                formatRuleClientAdapter.getFormatRules(logProcessId, pageable);
         return clientResponse.map(formatRuleMapper::toResponseListDTO);
     }
 
     public FormatRuleResponse.DetailDTO getFormatRule(Long formatRuleId) {
-        FormatRuleClientResponse.DetailDTO clientResponse = formatRuleClientAdaptor.getFormatRule(formatRuleId);
+        FormatRuleClientResponse.DetailDTO clientResponse = formatRuleClientAdapter.getFormatRule(formatRuleId);
         return formatRuleMapper.toResponseDetailDTO(clientResponse);
     }
 
     public FormatRuleResponse.FieldDTO getActiveFormatRuleFields(Long logProcessId) {
         FormatRuleClientResponse.FieldDTO clientResponse =
-                formatRuleClientAdaptor.getActiveFormatRuleFields(logProcessId);
+                formatRuleClientAdapter.getActiveFormatRuleFields(logProcessId);
         return formatRuleMapper.toResponseFieldDTO(clientResponse);
     }
 }

@@ -1,22 +1,24 @@
 package com.traveler.useractivity.domain.process.filter.engine;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import java.time.Duration;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.Expression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.SimpleEvaluationContext;
 
-@Slf4j
 public final class SpelExpressionEvaluator {
 
     private static final SpelExpressionParser PARSER = new SpelExpressionParser();
 
-    // OOM 방지를 위해 최대 캐시 사이즈를 강제
-    private static final int MAX_CACHE_SIZE = 10000;
-    private static final Map<String, Expression> EXPRESSION_CACHE = new ConcurrentHashMap<>();
+    // 파싱된 표현식 캐시. 상한 초과 시 오래 안 쓰인 항목부터 제거하고, 수정·삭제된 규칙의 옛 표현식은 접근이 끊기면 만료된다
+    private static final Cache<String, Expression> EXPRESSION_CACHE = Caffeine.newBuilder()
+            .maximumSize(10_000)
+            .expireAfterAccess(Duration.ofHours(1))
+            .build();
 
     private static final Pattern INTEGER_PATTERN = Pattern.compile("-?\\d+");
     private static final Pattern DECIMAL_PATTERN = Pattern.compile("-?\\d+\\.\\d+");
@@ -33,14 +35,8 @@ public final class SpelExpressionEvaluator {
             return false;
         }
 
-        // 메모리 누수 방어 (캐시가 비정상적으로 커지면 초기화 - 임시 조치)
-        if (EXPRESSION_CACHE.size() > MAX_CACHE_SIZE) {
-            log.warn("SpEL 표현식 캐시가 최대치({})를 초과하여 초기화합니다.", MAX_CACHE_SIZE);
-            EXPRESSION_CACHE.clear();
-        }
-
         // 파싱 및 캐싱
-        Expression expression = EXPRESSION_CACHE.computeIfAbsent(expressionString, PARSER::parseExpression);
+        Expression expression = EXPRESSION_CACHE.get(expressionString, PARSER::parseExpression);
 
         // 변수 바인딩 (문자열 값을 실제 타입으로 변환하여 숫자/불리언 비교가 가능하도록 함)
         EvaluationContext context =

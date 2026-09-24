@@ -2,24 +2,19 @@ package com.traveler.useractivity.domain.process.filter.service;
 
 import com.traveler.useractivity.domain.process.filter.engine.SpelExpressionEvaluator;
 import com.traveler.useractivity.domain.process.filter.model.ActiveFilterRule;
-import com.traveler.useractivity.domain.rule.filter.repository.FilterRuleRepository;
 import com.traveler.useractivity.global.exception.UserActivityServiceException;
 import com.traveler.useractivity.global.exception.code.UserActivityServiceErrorCode;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.expression.EvaluationException;
 import org.springframework.expression.ParseException;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class FilterService {
-
-    private final FilterRuleRepository filterRuleRepository;
 
     /**
      * 로그를 평가하여, 통과하지 못한 첫 번째 필터 규칙(FilterRule)을 반환합니다.

@@ -26,6 +26,8 @@ public class KafkaConfig {
     private final SslBundles sslBundles;
     private final KafkaExceptionHandler kafkaExceptionHandler;
 
+    private static final FixedBackOff NO_RETRY = new FixedBackOff(0L, 0L);
+
     // Producer
     @Bean
     public ProducerFactory<String, String> producerFactory() {
@@ -68,11 +70,14 @@ public class KafkaConfig {
         // DLT 발행기 생성 (원본토픽.DLT 로 전송)
         DefaultErrorHandler handler = getDefaultErrorHandler(kafkaTemplate);
 
-        // ListenerExecutionFailedException 제거
         handler.addNotRetryableExceptions(
                 com.fasterxml.jackson.core.JsonProcessingException.class,
                 org.springframework.messaging.handler.annotation.support.MethodArgumentTypeMismatchException.class,
                 IllegalArgumentException.class);
+
+        // 규칙 자체의 문제(4xx 코드, 규칙 문법 오류)는 재시도해도 결과가 같으므로 바로 recoverer로 보낸다.
+        // null을 반환하면 기본 BackOff(2초 간격 3회)를 쓴다.
+        handler.setBackOffFunction((record, ex) -> KafkaErrorClassifier.isNonRetryable(ex) ? NO_RETRY : null);
 
         handler.setRetryListeners(kafkaExceptionHandler::logRetry);
 

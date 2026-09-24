@@ -2,12 +2,12 @@ package com.traveler.post.domain.post.service;
 
 import com.traveler.common.api.converter.PageConverter;
 import com.traveler.common.core.response.PageResponse;
-import com.traveler.post.domain.comment.repository.CommentRepository;
 import com.traveler.post.domain.post.dto.response.AdminPostResponse;
 import com.traveler.post.domain.post.entity.Post;
 import com.traveler.post.domain.post.mapper.AdminPostMapper;
 import com.traveler.post.domain.post.mapper.PostMapper;
 import com.traveler.post.domain.post.repository.PostRepository;
+import com.traveler.post.domain.post.support.PostHardDeleter;
 import com.traveler.post.global.exception.PostServiceException;
 import com.traveler.post.global.exception.code.PostServiceErrorCode;
 import java.util.List;
@@ -24,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class AdminPostService {
     private final PostRepository postRepository;
-    private final CommentRepository commentRepository;
+    private final PostHardDeleter postHardDeleter;
     private final AdminPostMapper adminPostMapper;
     private final PostMapper postMapper;
     private final ApplicationEventPublisher eventPublisher;
@@ -85,13 +85,10 @@ public class AdminPostService {
             eventPublisher.publishEvent(postMapper.toDeletedEvent(post));
         }
 
-        List<String> imageKeys = postRepository.findImageKeysByPostIds(List.of(postId));
+        List<String> imageKeys = postHardDeleter.hardDelete(List.of(postId));
         if (!imageKeys.isEmpty()) {
             eventPublisher.publishEvent(postMapper.toImageDeleteEvent(postId, imageKeys));
         }
-
-        commentRepository.hardDeleteCommentsByPostId(postId);
-        postRepository.hardDeletePostsByIds(List.of(postId));
 
         return new AdminPostResponse.PermanentDeleteDTO(postId);
     }

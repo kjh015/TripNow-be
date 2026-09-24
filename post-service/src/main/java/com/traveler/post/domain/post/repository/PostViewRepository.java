@@ -3,6 +3,7 @@ package com.traveler.post.domain.post.repository;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -17,6 +18,17 @@ public class PostViewRepository {
     private static final String IDEMPOTENCY_PREFIX = "idempotency:trace:";
     private static final String VIEW_COUNT_BUFFER_KEY = "post:view_count:buffer";
     private static final String PROCESSING_KEY = "post:view_count:processing";
+    private static final String FLUSH_LOCK_KEY = "post:view_count:flush_lock";
+
+    /** 락 값이 자신이 설정한 토큰과 같을 때만 삭제해, 만료 후 다른 인스턴스가 잡은 락을 지우지 않습니다. */
+    private static final DefaultRedisScript<Long> RELEASE_LOCK_SCRIPT = new DefaultRedisScript<>(
+            """
+            if redis.call('GET', KEYS[1]) == ARGV[1] then
+                return redis.call('DEL', KEYS[1])
+            end
+            return 0
+            """,
+            Long.class);
 
     /**
      * 멱등성 키 선점(SET NX PX)과 조회수 증가(HINCRBY)를 하나의 Lua 스크립트로 원자 처리합니다.
@@ -55,17 +67,37 @@ public class PostViewRepository {
     }
 
     /**
-     * 현재 버퍼링 중인 조회수 데이터가 존재하는지 확인합니다.
+     * 조회수 동기화 락을 획득합니다(SET NX PX). 배포 중 post-service가 두 개 떠 있어도 한 곳에서만 동기화합니다.
+     *
+     * @return 획득에 성공하면 해제에 쓸 토큰, 실패하면 null
      */
-    public boolean hasBufferedViewCounts() {
-        return redisTemplate.hasKey(VIEW_COUNT_BUFFER_KEY);
+    public String tryAcquireFlushLock(Duration ttl) {
+        String token = UUID.randomUUID().toString();
+        Boolean acquired = redisTemplate.opsForValue().setIfAbsent(FLUSH_LOCK_KEY, token, ttl);
+        return Boolean.TRUE.equals(acquired) ? token : null;
     }
 
     /**
-     * 동시성 방어를 위해 현재 버퍼 키를 처리용 키로 이름을 변경합니다.
+     * 자신이 획득한 조회수 동기화 락을 해제합니다.
      */
-    public void isolateBufferForProcessing() {
-        redisTemplate.rename(VIEW_COUNT_BUFFER_KEY, PROCESSING_KEY);
+    public void releaseFlushLock(String token) {
+        redisTemplate.execute(RELEASE_LOCK_SCRIPT, List.of(FLUSH_LOCK_KEY), token);
+    }
+
+    /**
+     * 처리용 키를 준비하고, 처리할 데이터가 있으면 true 를 반환합니다.
+     *
+     * <p>이전 주기에 실패해 남은 처리용 키가 있으면 새 버퍼를 옮기지 않고 그것부터 처리합니다.
+     * RENAME 은 대상 키를 덮어써 남은 데이터를 유실시키므로 RENAMENX 로 옮깁니다.
+     */
+    public boolean prepareProcessingBuffer() {
+        if (redisTemplate.hasKey(PROCESSING_KEY)) {
+            return true;
+        }
+        if (!redisTemplate.hasKey(VIEW_COUNT_BUFFER_KEY)) {
+            return false;
+        }
+        return Boolean.TRUE.equals(redisTemplate.renameIfAbsent(VIEW_COUNT_BUFFER_KEY, PROCESSING_KEY));
     }
 
     /**

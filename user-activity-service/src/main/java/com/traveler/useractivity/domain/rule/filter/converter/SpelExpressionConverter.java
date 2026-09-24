@@ -13,7 +13,7 @@ public final class SpelExpressionConverter {
     private static final String SPEL_PREFIX = "#";
     private static final String SPEL_EQUALS_FORMAT = "(%1$s%2$s != null && %1$s%2$s matches '(?i)%3$s')";
     private static final String SPEL_DEFAULT_FORMAT = "(%1$s%2$s != null && %1$s%2$s %3$s %4$s)";
-    // 필드명 스크립트 주입 방지를 위한 정규식 (영문 대소문자, 숫자, 언더바만 허용. 점(.)은 중첩 객체 접근 필요 시 허용)
+    // 필드명 스크립트 주입 방지를 위한 정규식 (영문 대소문자, 숫자, 언더바만 허용)
     private static final Pattern STRICT_FIELD_PATTERN = Pattern.compile("^[a-zA-Z_][a-zA-Z0-9_]*$");
 
     private SpelExpressionConverter() {

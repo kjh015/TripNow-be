@@ -44,10 +44,7 @@ public class FilterRuleController {
 
     @Operation(summary = "필터 규칙 수정", description = "기존 필터 규칙의 내용을 수정합니다.")
     @ApiErrorCodeExamples(
-            value = {
-                UserActivityServiceErrorCode.FILTER_RULE_NOT_FOUND,
-                UserActivityServiceErrorCode.FILTER_RULE_ALREADY_DELETED
-            },
+            value = {UserActivityServiceErrorCode.FILTER_RULE_NOT_FOUND},
             common = {ErrorCode.INVALID_TYPE_VALUE})
     @PatchMapping("/filter-rules/{filterRuleId}")
     public ApiResponse<FilterRuleResponse.UpdateDTO> updateFilterRule(
@@ -57,10 +54,7 @@ public class FilterRuleController {
     }
 
     @Operation(summary = "필터 규칙 삭제", description = "필터 규칙을 삭제(Soft Delete) 처리합니다.")
-    @ApiErrorCodeExamples({
-        UserActivityServiceErrorCode.FILTER_RULE_NOT_FOUND,
-        UserActivityServiceErrorCode.FILTER_RULE_ALREADY_DELETED
-    })
+    @ApiErrorCodeExamples(UserActivityServiceErrorCode.FILTER_RULE_NOT_FOUND)
     @DeleteMapping("/filter-rules/{filterRuleId}")
     public ApiResponse<FilterRuleResponse.DeleteDTO> deleteFilterRule(
             @Parameter(description = "필터 규칙 ID") @PathVariable Long filterRuleId) {

@@ -40,3 +40,4 @@ out/
 *.env
 
 /deprecated/
+/docs/

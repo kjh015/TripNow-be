@@ -9,7 +9,7 @@ import com.traveler.member.domain.member.mapper.MemberMapper;
 import com.traveler.member.domain.member.repository.MemberRepository;
 import com.traveler.member.global.exception.MemberServiceException;
 import com.traveler.member.global.exception.code.MemberServiceErrorCode;
-import java.sql.SQLException;
+import com.traveler.member.global.util.DuplicateKeyUtil;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -46,7 +46,7 @@ public class MemberCommandService {
             // DB 강제 플러시 저장
             memberRepository.saveAndFlush(member);
         } catch (DataIntegrityViolationException e) {
-            if (isDuplicateKeyError(e)) {
+            if (DuplicateKeyUtil.isDuplicateKeyError(e)) {
                 throw new MemberServiceException(MemberServiceErrorCode.MEMBER_ALREADY_EXISTS, e);
             }
             // 중복 외의 무결성 위반 (Not Null 제약 위반, 데이터 잘림 등)
@@ -94,15 +94,5 @@ public class MemberCommandService {
         member.updatePassword(encodedNewPassword);
 
         return memberMapper.toUpdatePasswordDTO(member);
-    }
-
-    private boolean isDuplicateKeyError(DataIntegrityViolationException e) {
-        Throwable rootCause = e.getRootCause();
-
-        if (rootCause instanceof SQLException sqlException) {
-            // MySQL/MariaDB: 1062, PostgreSQL SQLState: 23505
-            return sqlException.getErrorCode() == 1062 || "23505".equals(sqlException.getSQLState());
-        }
-        return false;
     }
 }

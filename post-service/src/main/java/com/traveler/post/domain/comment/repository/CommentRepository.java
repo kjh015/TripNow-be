@@ -19,12 +19,14 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     Slice<Long> findExpiredCommentIds(@Param("threshold") Instant threshold, Pageable pageable);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("DELETE FROM Comment c WHERE c.id IN :commentIds")
+    // JPQL 벌크 DELETE에도 @SQLRestriction(is_deleted = false)이 붙어 소프트 삭제된 댓글이 지워지지 않으므로 네이티브 쿼리 사용
+    @Query(value = "DELETE FROM comment WHERE id IN :commentIds", nativeQuery = true)
     void hardDeleteCommentsByIds(@Param("commentIds") List<Long> commentIds);
 
+    // 게시글 영구 삭제 시 소프트 삭제된 댓글까지 지워야 하므로 @SQLRestriction을 타지 않는 네이티브 쿼리 사용
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("DELETE FROM Comment c WHERE c.post.id = :postId")
-    void hardDeleteCommentsByPostId(@Param("postId") Long postId);
+    @Query(value = "DELETE FROM comment WHERE post_id IN :postIds", nativeQuery = true)
+    void hardDeleteCommentsByPostIds(@Param("postIds") List<Long> postIds);
 
     // Admin - @SQLRestriction 우회를 위해 삭제된 댓글도 포함하여 조회하는 네이티브 쿼리
     @Query(
