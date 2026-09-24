@@ -15,7 +15,7 @@ public class KafkaExceptionHandler {
 
         switch (cause) {
             case UserActivityServiceException uase -> {
-                if (isClientError(uase)) {
+                if (KafkaErrorClassifier.isClientError(uase)) {
                     handleClientError(uase, record);
                 } else {
                     handleServerError(uase, record);
@@ -59,11 +59,6 @@ public class KafkaExceptionHandler {
     // 알 수 없는 예외
     private void handleUnknownError(Throwable t, ConsumerRecord<?, ?> record) {
         log.error("[Final Fail - Unknown Error] Topic: {}, Error: {}", record.topic(), t.getMessage());
-    }
-
-    private boolean isClientError(UserActivityServiceException uase) {
-        int status = uase.getCode().getStatus();
-        return status >= 400 && status < 500;
     }
 
     public void logRetry(ConsumerRecord<?, ?> record, Exception ex, int deliveryAttempt) {

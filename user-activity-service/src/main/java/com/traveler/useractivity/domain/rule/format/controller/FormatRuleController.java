@@ -44,10 +44,7 @@ public class FormatRuleController {
 
     @Operation(summary = "포맷 규칙 수정", description = "기존 포맷 규칙의 내용을 수정합니다.")
     @ApiErrorCodeExamples(
-            value = {
-                UserActivityServiceErrorCode.FORMAT_RULE_NOT_FOUND,
-                UserActivityServiceErrorCode.FORMAT_RULE_ALREADY_DELETED
-            },
+            value = {UserActivityServiceErrorCode.FORMAT_RULE_NOT_FOUND},
             common = {ErrorCode.INVALID_TYPE_VALUE})
     @PatchMapping("/format-rules/{formatRuleId}")
     public ApiResponse<FormatRuleResponse.UpdateDTO> updateFormatRule(
@@ -57,10 +54,7 @@ public class FormatRuleController {
     }
 
     @Operation(summary = "포맷 규칙 삭제", description = "포맷 규칙을 삭제(Soft Delete) 처리합니다.")
-    @ApiErrorCodeExamples({
-        UserActivityServiceErrorCode.FORMAT_RULE_NOT_FOUND,
-        UserActivityServiceErrorCode.FORMAT_RULE_ALREADY_DELETED
-    })
+    @ApiErrorCodeExamples(UserActivityServiceErrorCode.FORMAT_RULE_NOT_FOUND)
     @DeleteMapping("/format-rules/{formatRuleId}")
     public ApiResponse<FormatRuleResponse.DeleteDTO> deleteFormatRule(
             @Parameter(description = "포맷 규칙 ID") @PathVariable Long formatRuleId) {

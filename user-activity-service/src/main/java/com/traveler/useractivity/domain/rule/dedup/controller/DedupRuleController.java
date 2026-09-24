@@ -44,10 +44,7 @@ public class DedupRuleController {
 
     @Operation(summary = "중복제거 규칙 수정", description = "기존 중복제거 규칙의 내용을 수정합니다.")
     @ApiErrorCodeExamples(
-            value = {
-                UserActivityServiceErrorCode.DEDUP_RULE_NOT_FOUND,
-                UserActivityServiceErrorCode.DEDUP_RULE_ALREADY_DELETED
-            },
+            value = {UserActivityServiceErrorCode.DEDUP_RULE_NOT_FOUND},
             common = {ErrorCode.INVALID_TYPE_VALUE})
     @PatchMapping("/dedup-rules/{dedupRuleId}")
     public ApiResponse<DedupRuleResponse.UpdateDTO> updateDedupRule(
@@ -57,10 +54,7 @@ public class DedupRuleController {
     }
 
     @Operation(summary = "중복제거 규칙 삭제", description = "중복제거 규칙을 삭제(Soft Delete) 처리합니다.")
-    @ApiErrorCodeExamples({
-        UserActivityServiceErrorCode.DEDUP_RULE_NOT_FOUND,
-        UserActivityServiceErrorCode.DEDUP_RULE_ALREADY_DELETED
-    })
+    @ApiErrorCodeExamples(UserActivityServiceErrorCode.DEDUP_RULE_NOT_FOUND)
     @DeleteMapping("/dedup-rules/{dedupRuleId}")
     public ApiResponse<DedupRuleResponse.DeleteDTO> deleteDedupRule(
             @Parameter(description = "중복제거 규칙 ID") @PathVariable Long dedupRuleId) {

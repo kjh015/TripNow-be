@@ -41,10 +41,7 @@ public class LogProcessController {
 
     @Operation(summary = "로그 프로세스 수정", description = "기존 로그 프로세스의 이름/설명을 수정합니다.")
     @ApiErrorCodeExamples(
-            value = {
-                UserActivityServiceErrorCode.LOG_PROCESS_NOT_FOUND,
-                UserActivityServiceErrorCode.LOG_PROCESS_ALREADY_DELETED
-            },
+            value = {UserActivityServiceErrorCode.LOG_PROCESS_NOT_FOUND},
             common = {ErrorCode.INVALID_TYPE_VALUE})
     @PatchMapping("/{logProcessId}")
     public ApiResponse<LogProcessResponse.UpdateDTO> updateLogProcess(
@@ -54,10 +51,7 @@ public class LogProcessController {
     }
 
     @Operation(summary = "로그 프로세스 삭제", description = "로그 프로세스를 삭제(Soft Delete) 처리합니다.")
-    @ApiErrorCodeExamples({
-        UserActivityServiceErrorCode.LOG_PROCESS_NOT_FOUND,
-        UserActivityServiceErrorCode.LOG_PROCESS_ALREADY_DELETED
-    })
+    @ApiErrorCodeExamples(UserActivityServiceErrorCode.LOG_PROCESS_NOT_FOUND)
     @DeleteMapping("/{logProcessId}")
     public ApiResponse<LogProcessResponse.DeleteDTO> deleteLogProcess(
             @Parameter(description = "로그 프로세스 ID") @PathVariable Long logProcessId) {
