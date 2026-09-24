@@ -65,6 +65,9 @@ dependencies {
     // Cache
     implementation 'org.springframework.boot:spring-boot-starter-cache'
     implementation 'com.github.ben-manes.caffeine:caffeine'
+
+    // Actuator (ECS 컨테이너 헬스체크: /actuator/health/liveness)
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
 }
 
 dependencyManagement {

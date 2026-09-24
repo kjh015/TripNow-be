@@ -44,6 +44,18 @@ springdoc:
     path: /swagger-ui.html
   use-fqn: true
 
+# ECS 컨테이너 헬스체크용. liveness는 DB·Redis·ES 상태를 합산하지 않아 외부 의존 장애로 연쇄 재시작되지 않는다
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
 eureka:
   instance:
     prefer-ip-address: true
