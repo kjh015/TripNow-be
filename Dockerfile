@@ -1,3 +1,4 @@
+# 사용: docker build --build-arg TARGET=<service> . (예: TARGET=post-service)
 ARG TARGET
 
 # ------------------------------- builder -------------------------------------
