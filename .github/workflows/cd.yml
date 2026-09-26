@@ -8,7 +8,8 @@
 #  - 빌드(GitHub 러너)는 병렬로 해도 무방하므로 build 잡과 deploy 잡을 분리했습니다.
 #  - 태스크 정의는 콘솔에서 관리 → describe 해서 "이미지 URI만" 교체합니다.
 #    (환경 변수·secrets 블록은 절대 워크플로에서 새로 정의하지 않습니다)
-#  - 배포 후 `aws ecs wait services-stable`로 완료를 기다립니다.
+#  - 배포 후 `update-service`가 돌려준 배포 ID의 rolloutState 가 COMPLETED 가 될 때까지 기다립니다.
+#    (services-stable 대기는 헬스체크 통과 전에 끝날 수 있고, PRIMARY 기준 판정은 롤백을 성공으로 봅니다)
 #  - 컨테이너 이름은 접두사 없음(api-gateway), 그 외 리소스는 접두사 있음(tripnow-api-gateway).
 # =============================================================================
 name: CD (Build & Deploy to ECS)
@@ -303,23 +304,32 @@ jobs:
             echo "registered: $NEW_TD"
 
             # 4) 서비스 업데이트. 배포 옵션(100%/200%)은 서비스 설정을 그대로 따릅니다.
-            aws ecs update-service --cluster "$ECS_CLUSTER" --service "$NAME" \
-              --task-definition "$NEW_TD" >/dev/null
+            #    이번 배포의 ID 를 기록해 두고 5)에서 그 배포만 봅니다.
+            DEPLOY_ID=$(aws ecs update-service --cluster "$ECS_CLUSTER" --service "$NAME" \
+                         --task-definition "$NEW_TD" \
+                         --query 'service.deployments[?status==`PRIMARY`] | [0].id' --output text)
+            echo "deployment: $DEPLOY_ID"
 
-            # 5) 안정화 대기. aws ecs wait 는 15초 × 40회(10분)라 최대 3회 반복합니다.
-            #    100%/200% 라 새 태스크가 정상(헬스체크 통과)이 된 뒤 기존 태스크를 내립니다.
-            OK=0
-            for ATTEMPT in 1 2 3; do
-              if aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$NAME"; then
-                OK=1; break
-              fi
-              echo "아직 안정화되지 않음 (attempt $ATTEMPT/3) — 계속 대기합니다."
-            done
+            # 5) 이번 배포가 끝날 때까지 기다립니다 (15초 × 60회 = 최대 15분).
+            #    services-stable 은 "배포 1개 + running == desired" 만 보므로 헬스체크 통과 전에 끝날 수 있어 쓰지 않습니다.
+            #    롤백되면 롤백 배포가 PRIMARY 가 되므로, PRIMARY 가 아니라 이번 배포 ID 의 rolloutState 로 판정합니다.
+            ROLLOUT="IN_PROGRESS"
+            if [ -z "$DEPLOY_ID" ] || [ "$DEPLOY_ID" = "None" ]; then
+              ROLLOUT="NO_DEPLOYMENT_ID"
+            else
+              for POLL in $(seq 1 60); do
+                ROLLOUT=$(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$NAME" \
+                           --query "services[0].deployments[?id=='$DEPLOY_ID'] | [0].rolloutState" --output text)
+                case "$ROLLOUT" in
+                  COMPLETED|FAILED) break ;;
+                  None) ROLLOUT="ROLLED_BACK"; break ;;   # 목록에서 사라짐 = 롤백 후 정리됨
+                esac
+                echo "rolloutState=$ROLLOUT (poll $POLL/60) — 계속 대기합니다."
+                sleep 15
+              done
+            fi
 
-            ROLLOUT=$(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$NAME" \
-                       --query 'services[0].deployments[?status==`PRIMARY`].rolloutState | [0]' --output text)
-
-            if [ "$OK" != "1" ] || [ "$ROLLOUT" != "COMPLETED" ]; then
+            if [ "$ROLLOUT" != "COMPLETED" ]; then
               echo "::error::$NAME 배포 실패 (rolloutState=$ROLLOUT)"
               echo "--- 최근 서비스 이벤트 ---"
               aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$NAME" \
