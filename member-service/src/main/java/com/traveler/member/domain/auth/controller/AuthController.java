@@ -49,7 +49,7 @@ public class AuthController {
     @Operation(summary = "토큰 재발급", description = "유효한 Refresh Token을 사용하여 새로운 Access Token과 Refresh Token을 재발급합니다.")
     @ApiErrorCodeExamples(
             value = {
-                MemberServiceErrorCode.MEMBER_NOT_FOUND,
+                MemberServiceErrorCode.TOKEN_REISSUE_FAILED,
                 MemberServiceErrorCode.EXPIRED_JWT,
                 MemberServiceErrorCode.INVALID_TOKEN_TYPE
             },

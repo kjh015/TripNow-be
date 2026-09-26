@@ -52,7 +52,7 @@ public class MemberController {
     @RequireAuth
     @DeleteMapping("/me")
     public ApiResponse<MemberResponse.WithdrawDTO> withdraw(@Parameter(hidden = true) @LoginUser UserContext user) {
-        return ApiResponse.onSuccess(SuccessCode.OK, memberCommandService.withdraw(user.id()));
+        return ApiResponse.onSuccess(SuccessCode.OK, memberCommandService.withdraw(user.id(), user.accessToken()));
     }
 
     @Operation(summary = "내 정보 수정", description = "현재 로그인된 회원의 프로필 정보(닉네임 등)를 수정합니다.")

@@ -1,6 +1,7 @@
 package com.traveler.member.domain.member.service.command;
 
 import com.traveler.common.core.code.ErrorCode;
+import com.traveler.member.domain.auth.support.AuthTokenRevoker;
 import com.traveler.member.domain.member.dto.request.MemberRequest;
 import com.traveler.member.domain.member.dto.response.MemberResponse;
 import com.traveler.member.domain.member.entity.Member;
@@ -12,11 +13,14 @@ import com.traveler.member.global.exception.code.MemberServiceErrorCode;
 import com.traveler.member.global.util.DuplicateKeyUtil;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -24,6 +28,7 @@ public class MemberCommandService {
     private final MemberRepository memberRepository;
     private final MemberMapper memberMapper;
     private final PasswordEncoder passwordEncoder;
+    private final AuthTokenRevoker authTokenRevoker;
 
     public MemberResponse.SignUpDTO signUp(MemberRequest.SignUpDTO dto) {
         if (memberRepository.existsByLoginIdAndIsDeletedFalse(dto.loginId())) {
@@ -55,11 +60,18 @@ public class MemberCommandService {
         return memberMapper.toSignUpDTO(member);
     }
 
-    public MemberResponse.WithdrawDTO withdraw(Long memberId) {
+    public MemberResponse.WithdrawDTO withdraw(Long memberId, String accessToken) {
         Member member = memberRepository
                 .findById(memberId)
                 .orElseThrow(() -> new MemberServiceException(MemberServiceErrorCode.MEMBER_NOT_FOUND));
         member.delete();
+
+        // Redis 실패로 탈퇴를 막지 않는다. reissue가 탈퇴 회원을 거부하므로 남은 액세스 토큰은 만료 시까지만 유효
+        try {
+            authTokenRevoker.revokeAll(memberId, accessToken);
+        } catch (DataAccessException e) {
+            log.warn("탈퇴 회원 토큰 무효화 실패 memberId={}", memberId, e);
+        }
         return memberMapper.toWithdrawDTO(member);
     }
 

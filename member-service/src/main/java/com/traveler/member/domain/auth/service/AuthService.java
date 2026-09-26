@@ -7,7 +7,7 @@ import com.traveler.member.domain.auth.dto.request.AuthRequest;
 import com.traveler.member.domain.auth.dto.response.AuthResponse;
 import com.traveler.member.domain.auth.mapper.AuthMapper;
 import com.traveler.member.domain.auth.repository.RefreshTokenRepository;
-import com.traveler.member.domain.auth.repository.TokenBlacklistRepository;
+import com.traveler.member.domain.auth.support.AuthTokenRevoker;
 import com.traveler.member.domain.auth.support.JwtTokenProvider;
 import com.traveler.member.domain.auth.support.SocialMemberRegistrar;
 import com.traveler.member.domain.member.entity.Member;
@@ -32,7 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
     private final MemberRepository memberRepository;
     private final RefreshTokenRepository refreshTokenRepository;
-    private final TokenBlacklistRepository tokenBlacklistRepository;
+    private final AuthTokenRevoker authTokenRevoker;
     private final AuthMapper authMapper;
     private final JwtTokenProvider jwtTokenProvider;
     private final SocialMemberRegistrar socialMemberRegistrar;
@@ -53,13 +53,7 @@ public class AuthService {
     }
 
     public void logout(Long memberId, String accessToken) {
-        // Redis에 저장된 해당 유저의 Refresh Token 삭제
-        refreshTokenRepository.deleteByMemberId(memberId);
-
-        long remainingTime = jwtTokenProvider.getRemainingExpirationTime(accessToken);
-        if (remainingTime > 0) {
-            tokenBlacklistRepository.save(TokenHashUtil.hash(accessToken), remainingTime);
-        }
+        authTokenRevoker.revokeAll(memberId, accessToken);
     }
 
     public AuthResponse.LoginResult reissue(String refreshToken) {
@@ -73,10 +67,11 @@ public class AuthService {
 
         Long userId = jwtTokenProvider.getUserId(claims);
 
-        // 사용자 및 저장된 토큰 확인
-        Member member = memberRepository
-                .findByIdWithRoles(userId)
-                .orElseThrow(() -> new MemberServiceException(MemberServiceErrorCode.MEMBER_NOT_FOUND));
+        // 사용자 및 저장된 토큰 확인 (탈퇴 회원이면 남은 리프레시 토큰을 지우고 재발급 거부)
+        Member member = memberRepository.findActiveByIdWithRoles(userId).orElseThrow(() -> {
+            refreshTokenRepository.deleteByMemberId(userId);
+            return new MemberServiceException(MemberServiceErrorCode.TOKEN_REISSUE_FAILED);
+        });
 
         validateStoredRefreshToken(member.getId(), refreshToken);
 

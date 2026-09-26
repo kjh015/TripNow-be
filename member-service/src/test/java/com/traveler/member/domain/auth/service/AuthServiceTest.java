@@ -11,19 +11,23 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import com.traveler.common.core.auth.AuthConstants;
 import com.traveler.common.core.code.ErrorCode;
 import com.traveler.member.domain.auth.dto.AuthTokens;
 import com.traveler.member.domain.auth.dto.request.AuthRequest;
 import com.traveler.member.domain.auth.dto.response.AuthResponse;
 import com.traveler.member.domain.auth.mapper.AuthMapper;
 import com.traveler.member.domain.auth.repository.RefreshTokenRepository;
-import com.traveler.member.domain.auth.repository.TokenBlacklistRepository;
+import com.traveler.member.domain.auth.support.AuthTokenRevoker;
 import com.traveler.member.domain.auth.support.JwtTokenProvider;
 import com.traveler.member.domain.auth.support.SocialMemberRegistrar;
 import com.traveler.member.domain.member.entity.Member;
 import com.traveler.member.domain.member.enums.Provider;
 import com.traveler.member.domain.member.repository.MemberRepository;
 import com.traveler.member.global.exception.MemberServiceException;
+import com.traveler.member.global.exception.code.MemberServiceErrorCode;
+import com.traveler.member.global.util.TokenHashUtil;
+import io.jsonwebtoken.Claims;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.Optional;
@@ -38,10 +42,11 @@ class AuthServiceTest {
 
     private static final Long EXISTING_MEMBER_ID = 7L;
     private static final String PROVIDER_ID = "1234567890";
+    private static final String REFRESH_TOKEN = "stored-refresh-token";
 
     private final MemberRepository memberRepository = mock(MemberRepository.class);
     private final RefreshTokenRepository refreshTokenRepository = mock(RefreshTokenRepository.class);
-    private final TokenBlacklistRepository tokenBlacklistRepository = mock(TokenBlacklistRepository.class);
+    private final AuthTokenRevoker authTokenRevoker = mock(AuthTokenRevoker.class);
     private final AuthMapper authMapper = mock(AuthMapper.class);
     private final JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
     private final SocialMemberRegistrar socialMemberRegistrar = mock(SocialMemberRegistrar.class);
@@ -50,7 +55,7 @@ class AuthServiceTest {
     private final AuthService authService = new AuthService(
             memberRepository,
             refreshTokenRepository,
-            tokenBlacklistRepository,
+            authTokenRevoker,
             authMapper,
             jwtTokenProvider,
             socialMemberRegistrar,
@@ -115,6 +120,51 @@ class AuthServiceTest {
 
         assertThat(result.loginInfo().memberId()).isEqualTo(8L);
         verify(refreshTokenRepository).save(eq(8L), anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("탈퇴한 회원의 리프레시 토큰으로 재발급하면 저장된 리프레시 토큰을 지우고 거부한다")
+    void reissue_withdrawnMember_deletesRefreshTokenAndThrows() {
+        givenValidRefreshToken(EXISTING_MEMBER_ID);
+        given(memberRepository.findActiveByIdWithRoles(EXISTING_MEMBER_ID)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.reissue(REFRESH_TOKEN))
+                .isInstanceOf(MemberServiceException.class)
+                .extracting("code")
+                .isEqualTo(MemberServiceErrorCode.TOKEN_REISSUE_FAILED);
+        verify(refreshTokenRepository).deleteByMemberId(EXISTING_MEMBER_ID);
+        verify(refreshTokenRepository, never()).save(anyLong(), anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("활성 회원의 리프레시 토큰으로 재발급하면 새 토큰을 발급하고 저장한다")
+    void reissue_activeMember_rotatesTokens() {
+        givenValidRefreshToken(EXISTING_MEMBER_ID);
+        given(memberRepository.findActiveByIdWithRoles(EXISTING_MEMBER_ID))
+                .willReturn(Optional.of(member(EXISTING_MEMBER_ID)));
+        given(refreshTokenRepository.findByMemberId(EXISTING_MEMBER_ID))
+                .willReturn(Optional.of(TokenHashUtil.hash(REFRESH_TOKEN)));
+
+        AuthResponse.LoginResult result = authService.reissue(REFRESH_TOKEN);
+
+        assertThat(result.tokens().refreshToken()).isEqualTo("refresh-token");
+        verify(refreshTokenRepository).save(eq(EXISTING_MEMBER_ID), anyString(), anyLong());
+        verify(refreshTokenRepository, never()).deleteByMemberId(anyLong());
+    }
+
+    @Test
+    @DisplayName("로그아웃은 리프레시 토큰 삭제와 액세스 토큰 블랙리스트 등록을 위임한다")
+    void logout_revokesTokens() {
+        authService.logout(EXISTING_MEMBER_ID, "access-token");
+
+        verify(authTokenRevoker).revokeAll(EXISTING_MEMBER_ID, "access-token");
+    }
+
+    private void givenValidRefreshToken(Long memberId) {
+        Claims claims = mock(Claims.class);
+        given(jwtTokenProvider.validateToken(REFRESH_TOKEN)).willReturn(claims);
+        given(jwtTokenProvider.getTokenType(claims)).willReturn(AuthConstants.TOKEN_TYPE_REFRESH);
+        given(jwtTokenProvider.getUserId(claims)).willReturn(memberId);
     }
 
     private Member member(Long id) {

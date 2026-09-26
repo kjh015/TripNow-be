@@ -11,6 +11,7 @@ import com.traveler.web.global.swagger.ApiErrorCodeExamples;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -35,12 +36,12 @@ public class MemberController {
         return ApiResponse.onSuccess(SuccessCode.OK, memberFacade.signUp(dto));
     }
 
-    @Operation(summary = "회원 탈퇴", description = "현재 로그인된 회원의 탈퇴 처리를 Member 서버에 요청합니다.")
+    @Operation(summary = "회원 탈퇴", description = "현재 로그인된 회원의 탈퇴 처리를 Member 서버에 요청하고 웹 브라우저의 인증 쿠키를 만료시킵니다.")
     @RequireAuth
     @DeleteMapping("/me")
-    public ApiResponse<MemberResponse.WithdrawDTO> withdraw() {
+    public ApiResponse<MemberResponse.WithdrawDTO> withdraw(HttpServletResponse response) {
         // 인증 정보는 API Gateway나 Interceptor에서 Header로 주입됨을 가정
-        return ApiResponse.onSuccess(SuccessCode.OK, memberFacade.withdraw());
+        return ApiResponse.onSuccess(SuccessCode.OK, memberFacade.withdraw(response));
     }
 
     @Operation(summary = "내 정보 수정", description = "현재 로그인된 회원의 프로필 정보(닉네임 등)를 수정합니다.")

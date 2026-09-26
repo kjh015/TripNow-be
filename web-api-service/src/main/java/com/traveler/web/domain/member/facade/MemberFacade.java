@@ -6,6 +6,8 @@ import com.traveler.web.domain.member.client.dto.response.MemberClientResponse;
 import com.traveler.web.domain.member.dto.request.MemberRequest;
 import com.traveler.web.domain.member.dto.response.MemberResponse;
 import com.traveler.web.domain.member.mapper.MemberMapper;
+import com.traveler.web.global.security.support.AuthHttpSupport;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Component;
 public class MemberFacade {
     private final MemberClientAdapter memberClientAdapter;
     private final MemberMapper memberMapper;
+    private final AuthHttpSupport authHttpSupport;
 
     public MemberResponse.SignUpDTO signUp(MemberRequest.SignUpDTO dto) {
         MemberClientRequest.SignUpDTO clientRequest = memberMapper.toClientSignUpDTO(dto);
@@ -21,8 +24,10 @@ public class MemberFacade {
         return memberMapper.toResponseSignUpDTO(clientResponse);
     }
 
-    public MemberResponse.WithdrawDTO withdraw() {
+    public MemberResponse.WithdrawDTO withdraw(HttpServletResponse response) {
         MemberClientResponse.WithdrawDTO clientResponse = memberClientAdapter.withdraw();
+        // 탈퇴가 성공했을 때만 쿠키를 지운다 (실패 시 로그인 상태 유지)
+        authHttpSupport.clearAuthResponse(response);
         return memberMapper.toResponseWithdrawDTO(clientResponse);
     }
 
