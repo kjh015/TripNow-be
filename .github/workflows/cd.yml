@@ -227,7 +227,7 @@ jobs:
       needs.detect-changes.outputs.services != '[]' &&
       (needs.build.result == 'success' || needs.build.result == 'skipped')
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - name: Configure AWS credentials (OIDC)
         if: vars.AWS_ROLE_ARN != ''
