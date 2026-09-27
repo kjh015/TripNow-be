@@ -68,7 +68,7 @@
 
 ## 🏗️ 시스템 아키텍처
 
-<img width="1790" height="920" alt="시스템 아키텍처" src="https://github.com/user-attachments/assets/c30942f4-5f1e-44f2-8f8e-060a7d1a7dc5" />
+<img width="1790" height="921" alt="시스템 아키텍처" src="https://github.com/user-attachments/assets/6757790d-0c2e-4ee5-bd5d-a3f2dfb1dfe7" />
 
 <br/>
 
@@ -142,7 +142,7 @@ Post Service는 **MySQL에 원본을 저장**하고 변경 이벤트를 **Kafka�
 
 <br/>
 
-### 📈 사용자 행동 로그
+### 📈 사용자 행동 데이터 파이프라인
 
 <img width="2102" height="472" alt="UserActivity" src="https://github.com/user-attachments/assets/30cc0d44-4a4f-44e2-9e6f-dc5cfc549f6d" />
  
@@ -150,9 +150,9 @@ Post Service는 **MySQL에 원본을 저장**하고 변경 이벤트를 **Kafka�
  
 **2. 정제** — UserActivity Service가 `Format → Filter → Dedup → Sink` 단계로 로그를 정제, 정제 규칙은 MySQL에서 관리
  
-**3. 적재** — Logstash가 정제 로그를 구독해 S3 아카이브 및 Elasticsearch 색인
+**3. 저장** — Logstash가 정제 로그를 구독해 S3 아카이브 및 Elasticsearch 색인
  
-**4. 활용** — Kibana에서 조회 · 시각화
+**4. 서빙** — Kibana에서 조회 · 시각화
 
 <br/>
 
