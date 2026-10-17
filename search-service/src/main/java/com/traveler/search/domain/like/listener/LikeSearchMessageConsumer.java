@@ -8,6 +8,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
@@ -24,8 +25,10 @@ public class LikeSearchMessageConsumer {
     public void consume(
             @Payload String payload,
             @Header(value = "event-type", required = false) String eventType,
+            @Header(value = KafkaHeaders.RECEIVED_KEY, required = false) String key,
+            @Header(value = "event-id", required = false) String eventId,
             Acknowledgment ack) {
-        log.info("LikeSearch Kafka Consumer: Type=[{}], Payload=[{}]", eventType, payload);
+        log.debug("LikeSearch Kafka Consumer: Type=[{}], key=[{}], eventId=[{}]", eventType, key, eventId);
 
         if (eventType == null) {
             log.error("Missing 'event-type' header. Payload: {}", payload);

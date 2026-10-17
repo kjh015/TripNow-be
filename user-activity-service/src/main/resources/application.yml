@@ -28,12 +28,10 @@ spring:
   jpa:
     database: mysql
     database-platform: org.hibernate.dialect.MySQLDialect
-    show-sql: true
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
-        format_sql: true
         default_batch_fetch_size: 100
 
   data:
@@ -48,14 +46,19 @@ spring:
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
       acks: all
       retries: 3
+      # 운영 메모리 기준값(앱 EC2 t3.small 한 대에 JVM 7개). 클라이언트 기본값은 32MB 버퍼, 16KB 배치
+      buffer-memory: 8MB
+      batch-size: 8KB
+      compression-type: gzip
     consumer:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       group-id: user-activity-default-group
       auto-offset-reset: earliest
       enable-auto-commit: false
+      max-poll-records: 50 # 기본 500
     listener:
-      concurrency: 3
+      concurrency: 1 # 운영은 트래픽이 적고 메모리가 빠듯해 1. local 프로필에서 3
       ack-mode: manual_immediate
 
   cloud:
@@ -73,6 +76,8 @@ logging:
   level:
     # 파이프라인 단계별 상세(수신 로그, 원본 path 등)가 필요하면 DEBUG로 변경
     com.traveler.useractivity.domain.process: INFO
+    # 기동 시 ConsumerConfig·ProducerConfig 설정 덤프 제거
+    org.apache.kafka: WARN
 
 swagger:
   info:
@@ -83,10 +88,13 @@ swagger:
       - "/v1/admin/dedup-rules/**"
       - "/v1/admin/histories/**"
 
+# Swagger는 기본으로 끄고 local 프로필에서만 켠다
 springdoc:
   api-docs:
+    enabled: false
     path: /v1/user-activity/v3/api-docs
   swagger-ui:
+    enabled: false
     path: /swagger-ui.html
 
 # ECS 컨테이너 헬스체크용. liveness는 DB·Redis·ES 상태를 합산하지 않아 외부 의존 장애로 연쇄 재시작되지 않는다

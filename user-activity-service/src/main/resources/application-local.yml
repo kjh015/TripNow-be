@@ -1,0 +1,27 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+
+  kafka:
+    listener:
+      concurrency: 3 # 여러 스레드로 메시지를 처리하는 경우를 개발 중에 확인한다
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    # 바인딩 값이 필요할 때만 주석 해제
+    # org.hibernate.orm.jdbc.bind: TRACE

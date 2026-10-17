@@ -18,12 +18,10 @@ spring:
   jpa:
     database: mysql
     database-platform: org.hibernate.dialect.MySQLDialect
-    show-sql: true
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
-        format_sql: true
         default_batch_fetch_size: 100
   data:
     redis:
@@ -37,10 +35,13 @@ swagger:
       - "/v1/auth/**"
       - "/v1/admin/members/**"
 
+# Swagger는 기본으로 끄고 local 프로필에서만 켠다
 springdoc:
   api-docs:
+    enabled: false
     path: /v1/members/v3/api-docs
   swagger-ui:
+    enabled: false
     path: /swagger-ui.html
   use-fqn: true
 

@@ -2,13 +2,3 @@ spring:
   config:
     activate:
       on-profile: prod
-
-logging:
-  level:
-    org.elasticsearch.client: INFO
-
-springdoc:
-  api-docs:
-    enabled: false
-  swagger-ui:
-    enabled: false

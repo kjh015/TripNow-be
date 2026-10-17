@@ -1,3 +1,4 @@
+# 배포 테스트 서버
 spring:
   config:
     activate:

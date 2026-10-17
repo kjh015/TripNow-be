@@ -1,0 +1,19 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+
+  kafka:
+    listener:
+      concurrency: 3 # 여러 스레드로 메시지를 처리하는 경우를 개발 중에 확인한다
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+# ES 요청 로그가 필요할 때만 주석 해제 (랭킹 집계가 10초마다 요청을 보낸다)
+#logging:
+#  level:
+#    org.elasticsearch.client: DEBUG

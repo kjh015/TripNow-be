@@ -92,7 +92,7 @@ public class RankingService {
                         RankingResponse.LiveDTO data =
                                 objectMapper.readValue(message.getBody(), RankingResponse.LiveDTO.class);
 
-                        log.info("Ranking data deserialized explicitly. Broadcasting...");
+                        log.debug("Ranking data deserialized explicitly. Broadcasting...");
                         broadcast(EVENT_RANKING_UPDATE, data);
                     } catch (IOException e) {
                         log.error("Failed to deserialize ranking data", e);
