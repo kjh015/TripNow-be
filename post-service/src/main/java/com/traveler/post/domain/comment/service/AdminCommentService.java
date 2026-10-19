@@ -1,7 +1,11 @@
 package com.traveler.post.domain.comment.service;
 
+import static com.traveler.post.global.audit.PostServiceAuditAction.DELETE_COMMENT;
+import static com.traveler.post.global.audit.PostServiceAuditAction.RESTORE_COMMENT;
+
 import com.traveler.common.api.converter.PageConverter;
 import com.traveler.common.core.response.PageResponse;
+import com.traveler.common.support.logging.audit.AuditLogger;
 import com.traveler.post.domain.comment.dto.event.CommentEvent;
 import com.traveler.post.domain.comment.dto.response.AdminCommentResponse;
 import com.traveler.post.domain.comment.entity.Comment;
@@ -29,6 +33,7 @@ public class AdminCommentService {
     private final AdminCommentMapper adminCommentMapper;
     private final CommentMapper commentMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuditLogger auditLogger;
 
     @Transactional(readOnly = true)
     public PageResponse<AdminCommentResponse.ListDTO> getComments(Long postId, Boolean deleted, Pageable pageable) {
@@ -52,6 +57,10 @@ public class AdminCommentService {
                 .orElseThrow(() -> new PostServiceException(PostServiceErrorCode.POST_NOT_FOUND));
 
         comment.delete();
+        auditLogger
+                .event(DELETE_COMMENT, commentId)
+                .detail("postId", post.getId())
+                .log();
 
         if (post.isDeleted()) {
             // 삭제된 게시물은 검색 문서가 없으므로 통계 갱신 없이 댓글 삭제 메시지만 발행
@@ -82,6 +91,10 @@ public class AdminCommentService {
         }
 
         comment.restore();
+        auditLogger
+                .event(RESTORE_COMMENT, commentId)
+                .detail("postId", post.getId())
+                .log();
         post.addComment(comment.getStar());
 
         // 검색 문서 재색인(Created) 및 게시글 통계 동기화 이벤트 발행

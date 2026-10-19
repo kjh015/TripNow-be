@@ -27,6 +27,9 @@ dependencies {
     // common-core
     api project(':common:core')
 
+    // logging (MDC 키)
+    implementation project(':common:support:logging')
+
     // Web
     implementation 'org.springframework.boot:spring-boot-starter-web'
     compileOnly 'org.projectlombok:lombok'

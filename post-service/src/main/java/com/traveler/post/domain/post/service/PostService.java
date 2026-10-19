@@ -17,12 +17,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -108,6 +110,8 @@ public class PostService {
 
         post.delete();
         eventPublisher.publishEvent(postMapper.toDeletedEvent(post));
+        // 사용자 삭제 복구 문의 대응용
+        log.info("[Post] 게시글 삭제 postId={} memberId={}", postId, memberId);
 
         return postMapper.toDeleteDTO(post);
     }

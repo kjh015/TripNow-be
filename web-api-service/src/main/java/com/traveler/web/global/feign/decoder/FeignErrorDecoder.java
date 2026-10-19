@@ -19,7 +19,7 @@ public class FeignErrorDecoder implements ErrorDecoder {
     @Override
     public Exception decode(String methodKey, Response response) {
         if (response.body() == null) {
-            log.error("[Feign Error] Response body is null. Status: {}", response.status());
+            log.error("[Feign Error] Response body is null. Method: {}, Status: {}", methodKey, response.status());
             return new WebApiServiceException(WebApiServiceErrorCode.SERVICE_RESPONSE_EMPTY);
         }
 

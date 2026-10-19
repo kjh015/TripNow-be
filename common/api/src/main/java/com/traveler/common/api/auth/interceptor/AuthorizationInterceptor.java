@@ -10,9 +10,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Arrays;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+@Slf4j
 public class AuthorizationInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
@@ -29,6 +31,10 @@ public class AuthorizationInterceptor implements HandlerInterceptor {
 
         // 어노테이션이 있는데 컨텍스트(유저 정보)가 없으면 401 차단
         if (context == null) {
+            log.warn(
+                    "[Auth] Unauthenticated. uri={} required={}",
+                    request.getRequestURI(),
+                    requireRole != null ? Arrays.toString(requireRole.value()) : "AUTH");
             throw new GeneralException(ErrorCode.UNAUTHORIZED);
         }
 
@@ -40,6 +46,12 @@ public class AuthorizationInterceptor implements HandlerInterceptor {
             boolean hasRole = context.roles().stream().anyMatch(requiredRoles::contains);
 
             if (!hasRole) {
+                log.warn(
+                        "[Auth] Access Denied. userId={} uri={} required={} actual={}",
+                        context.id(),
+                        request.getRequestURI(),
+                        requiredRoles,
+                        context.roles());
                 throw new GeneralException(ErrorCode.FORBIDDEN);
             }
         }

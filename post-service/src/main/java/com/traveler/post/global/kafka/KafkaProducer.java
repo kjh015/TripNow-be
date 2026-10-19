@@ -40,7 +40,8 @@ public class KafkaProducer {
                         eventId,
                         result.getRecordMetadata().offset());
             } else {
-                log.error("Kafka 메시지 전송 실패: topic=[{}], key=[{}], eventId=[{}]", topic, key, eventId, ex);
+                // 실패는 호출한 OutboxRelay가 재시도 여부에 따라 WARN/ERROR로 남긴다(중복 로깅 방지)
+                log.debug("Kafka 메시지 전송 실패: topic=[{}], key=[{}], eventId=[{}]", topic, key, eventId);
             }
         });
     }

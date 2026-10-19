@@ -7,7 +7,10 @@ spring:
     name: "member-service"
 
   config:
-    import: optional:file:member-service/.env[.properties]
+    import:
+      - optional:file:member-service/.env[.properties]
+      # 공통 로깅 설정 (common/support/logging)
+      - classpath:logging.yml
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver

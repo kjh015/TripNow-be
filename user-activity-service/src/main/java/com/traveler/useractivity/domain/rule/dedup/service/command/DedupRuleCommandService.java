@@ -1,5 +1,10 @@
 package com.traveler.useractivity.domain.rule.dedup.service.command;
 
+import static com.traveler.useractivity.global.audit.UserActivityServiceAuditAction.CREATE_DEDUP_RULE;
+import static com.traveler.useractivity.global.audit.UserActivityServiceAuditAction.DELETE_DEDUP_RULE;
+import static com.traveler.useractivity.global.audit.UserActivityServiceAuditAction.UPDATE_DEDUP_RULE;
+
+import com.traveler.common.support.logging.audit.AuditLogger;
 import com.traveler.useractivity.domain.rule.dedup.dto.event.DedupRuleEvent;
 import com.traveler.useractivity.domain.rule.dedup.dto.request.DedupRuleRequest;
 import com.traveler.useractivity.domain.rule.dedup.dto.response.DedupRuleResponse;
@@ -23,6 +28,7 @@ public class DedupRuleCommandService {
     private final DedupRuleRepository dedupRuleRepository;
     private final DedupRuleMapper dedupRuleMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuditLogger auditLogger;
 
     public DedupRuleResponse.CreateDTO createDedupRule(Long logProcessId, DedupRuleRequest.CreateDTO dto) {
         LogProcess logProcess = logProcessRepository
@@ -33,6 +39,11 @@ public class DedupRuleCommandService {
         DedupRule dedupRule = dedupRuleMapper.toCreateEntity(dto, logProcess);
 
         DedupRule savedDedupRule = dedupRuleRepository.save(dedupRule);
+        auditLogger
+                .event(CREATE_DEDUP_RULE, savedDedupRule.getId())
+                .detail("logProcessId", logProcessId)
+                .detail("isActive", savedDedupRule.isActive())
+                .log();
 
         if (savedDedupRule.isActive()) {
             eventPublisher.publishEvent(new DedupRuleEvent.Evict(logProcessId));
@@ -46,9 +57,15 @@ public class DedupRuleCommandService {
                 .findById(dedupRuleId)
                 .orElseThrow(() -> new UserActivityServiceException(UserActivityServiceErrorCode.DEDUP_RULE_NOT_FOUND));
 
+        boolean wasActive = dedupRule.isActive();
         dedupRule.update(dto.name(), dto.rules(), dto.isActive());
 
         Long logProcessId = dedupRule.getLogProcess().getId();
+        auditLogger
+                .event(UPDATE_DEDUP_RULE, dedupRuleId)
+                .detail("logProcessId", logProcessId)
+                .detail("isActive", wasActive + "->" + dedupRule.isActive())
+                .log();
         eventPublisher.publishEvent(new DedupRuleEvent.Evict(logProcessId));
 
         return dedupRuleMapper.toUpdateDTO(dedupRule);
@@ -62,6 +79,10 @@ public class DedupRuleCommandService {
         dedupRule.delete();
 
         Long logProcessId = dedupRule.getLogProcess().getId();
+        auditLogger
+                .event(DELETE_DEDUP_RULE, dedupRuleId)
+                .detail("logProcessId", logProcessId)
+                .log();
         eventPublisher.publishEvent(new DedupRuleEvent.Evict(logProcessId));
 
         return dedupRuleMapper.toDeleteDTO(dedupRule);

@@ -1,0 +1,12 @@
+# 서비스 공통 로깅 설정. 각 서비스 application.yml의 spring.config.import로 가져온다.
+# import된 파일의 값은 가져온 application.yml보다 우선하므로, 서비스마다 달라야 하는 값은 여기에 두지 않는다.
+# (프로필 파일 application-{profile}.yml은 이 파일보다 우선한다)
+logging:
+  pattern:
+    # 요청 사용자 ID(MDC userId)를 레벨 옆에 붙인다. 요청 밖 로그는 '-'
+    level: "%5p [userId:%X{userId:--}]"
+  level:
+    # 기동 시 Kafka ConsumerConfig·ProducerConfig 설정 덤프 제거
+    org.apache.kafka: WARN
+    # 감사 로그는 서비스 로그 레벨 설정과 무관하게 항상 남긴다
+    AUDIT: INFO

@@ -84,7 +84,7 @@ jobs:
               - 'gradle.properties'
               - 'gradle/**'
               - '*/build.gradle'
-              - 'common/*/build.gradle'
+              - 'common/**/build.gradle'
               - '.github/workflows/ci.yml'
 
   docker-build-check:

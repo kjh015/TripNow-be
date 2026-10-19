@@ -69,7 +69,9 @@ public class OutboxService {
                             outbox.getTopic(),
                             partitionKey(outbox.getAggregateId()),
                             outbox.getEventType(),
-                            outbox.getPayload());
+                            outbox.getPayload(),
+                            // claim에서 retryCount를 이미 올렸으므로 한도에 닿았으면 마지막 시도다
+                            !outbox.isRetryable(MAX_RETRY_COUNT));
                 } catch (Exception e) {
                     log.error("Outbox 재시도 중 오류 발생: id={}", outbox.getId(), e);
                 }
@@ -104,7 +106,7 @@ public class OutboxService {
         try {
             return objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException e) {
-            log.error("Outbox Payload 직렬화 실패: {}", payload, e);
+            log.error("Outbox Payload 직렬화 실패: type={}", payload.getClass().getSimpleName(), e);
             throw new PostServiceException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
     }

@@ -7,7 +7,10 @@ spring:
     name: "post-service"
 
   config:
-    import: optional:file:post-service/.env[.properties]
+    import:
+      - optional:file:post-service/.env[.properties]
+      # 공통 로깅 설정 (common/support/logging)
+      - classpath:logging.yml
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -60,11 +63,6 @@ spring:
 #      credentials:
 #        access-key: ${AWS_ACCESS_KEY_ID}
 #        secret-key: ${AWS_SECRET_ACCESS_KEY}
-
-logging:
-  level:
-    # 기동 시 ConsumerConfig·ProducerConfig 설정 덤프 제거
-    org.apache.kafka: WARN
 
 swagger:
   info:

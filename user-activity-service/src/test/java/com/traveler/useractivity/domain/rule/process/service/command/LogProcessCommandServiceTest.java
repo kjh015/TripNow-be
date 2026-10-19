@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
+import com.traveler.common.support.logging.audit.AuditLogger;
 import com.traveler.useractivity.domain.rule.dedup.dto.event.DedupRuleEvent;
 import com.traveler.useractivity.domain.rule.dedup.entity.DedupRule;
 import com.traveler.useractivity.domain.rule.dedup.repository.DedupRuleRepository;
@@ -49,6 +50,9 @@ class LogProcessCommandServiceTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private AuditLogger auditLogger;
 
     @InjectMocks
     private LogProcessCommandService logProcessCommandService;

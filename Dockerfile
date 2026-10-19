@@ -14,6 +14,7 @@ COPY settings.gradle build.gradle ./
 COPY common/core/build.gradle            common/core/
 COPY common/api/build.gradle             common/api/
 COPY common/db/build.gradle              common/db/
+COPY common/support/logging/build.gradle common/support/logging/
 COPY api-gateway/build.gradle            api-gateway/
 COPY discovery-service/build.gradle      discovery-service/
 COPY member-service/build.gradle         member-service/

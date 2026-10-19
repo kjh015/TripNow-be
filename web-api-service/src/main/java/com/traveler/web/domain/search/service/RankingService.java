@@ -35,6 +35,10 @@ public class RankingService {
     private static final String EVENT_RANKING_UPDATE = "ranking-update";
     private static final String EVENT_CONNECTED = "connected";
 
+    public int getActiveEmitterCount() {
+        return emitters.size();
+    }
+
     /**
      * 클라이언트가 SSE 연결을 시도할 때 호출
      */

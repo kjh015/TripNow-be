@@ -31,7 +31,8 @@ public class PostSearchMessageConsumer {
         log.debug("PostSearch Kafka Consumer: Type=[{}], key=[{}], eventId=[{}]", eventType, key, eventId);
 
         if (eventType == null) {
-            log.error("Missing 'event-type' header. Payload: {}", payload);
+            // payload에는 게시글 본문 등이 들어가므로 남기지 않는다
+            log.error("Missing 'event-type' header. key={} eventId={}", key, eventId);
             ack.acknowledge();
             return;
         }

@@ -7,7 +7,10 @@ spring:
     name: "user-activity-service"
 
   config:
-    import: optional:file:user-activity-service/.env[.properties]
+    import:
+      - optional:file:user-activity-service/.env[.properties]
+      # 공통 로깅 설정 (common/support/logging)
+      - classpath:logging.yml
 
   elasticsearch:
     # 값 형식은 "호스트:포트" (스킴 없음). ElasticsearchConfig의
@@ -76,8 +79,6 @@ logging:
   level:
     # 파이프라인 단계별 상세(수신 로그, 원본 path 등)가 필요하면 DEBUG로 변경
     com.traveler.useractivity.domain.process: INFO
-    # 기동 시 ConsumerConfig·ProducerConfig 설정 덤프 제거
-    org.apache.kafka: WARN
 
 swagger:
   info:

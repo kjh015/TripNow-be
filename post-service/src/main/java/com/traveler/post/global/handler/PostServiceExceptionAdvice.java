@@ -4,11 +4,13 @@ import com.traveler.common.api.handler.BaseExceptionAdvice;
 import com.traveler.common.core.response.ApiResponse;
 import com.traveler.post.global.exception.PostServiceException;
 import com.traveler.post.global.exception.code.PostServiceErrorCode;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -30,7 +32,7 @@ public class PostServiceExceptionAdvice implements BaseExceptionAdvice {
         String errorCode = Optional.ofNullable(ex.awsErrorDetails())
                 .map(AwsErrorDetails::errorCode)
                 .orElse("UNKNOWN");
-        log.error("[S3 Error] Status: {}, Message: {}", ex.statusCode(), errorMessage);
+        log.error("[S3 Error] Status: {}, Message: {}", ex.statusCode(), errorMessage, ex);
 
         PostServiceErrorCode mappedErrorCode =
                 switch (errorCode) {
@@ -41,6 +43,21 @@ public class PostServiceExceptionAdvice implements BaseExceptionAdvice {
                 };
 
         return createErrorResponse(mappedErrorCode, null);
+    }
+
+    /**
+     * 게시글 비관적 락(findByIdWithLock) 대기 초과·데드락. 같은 게시글에 좋아요·댓글이 몰릴 때 발생한다.
+     * 경합은 일시적이고 클라이언트가 재시도하면 되므로 500이 아닌 409로 응답한다.
+     */
+    @ExceptionHandler(PessimisticLockingFailureException.class)
+    protected ResponseEntity<ApiResponse<Void>> handlePessimisticLockingFailure(
+            PessimisticLockingFailureException ex, HttpServletRequest request) {
+        log.warn(
+                "[Lock Conflict] 게시글 락 획득 실패 method={} uri={} type={}",
+                request.getMethod(),
+                request.getRequestURI(),
+                ex.getClass().getSimpleName());
+        return createErrorResponse(PostServiceErrorCode.POST_LOCK_CONFLICT, null);
     }
 
     /** Post Service에서 발생하는 커스텀 비즈니스 예외 처리 */
