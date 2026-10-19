@@ -24,6 +24,9 @@ public enum PostServiceErrorCode implements BaseErrorCode {
     COMMENT_NOT_DELETED(400, "COMMENT400_3", "삭제되지 않은 댓글입니다."),
     COMMENT_PARENT_POST_DELETED(400, "COMMENT400_4", "삭제된 게시물의 댓글은 복구할 수 없습니다."),
 
+    // Concurrency
+    POST_LOCK_CONFLICT(409, "POST409_1", "요청이 몰려 처리하지 못했습니다. 잠시 후 다시 시도해주세요."),
+
     // Infra - Kafka
     TOPIC_NOT_CONFIGURED(500, "EVENT500_1", "해당 이벤트 타입에 대한 Kafka 토픽 설정이 누락되었습니다."),
 

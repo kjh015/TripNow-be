@@ -40,7 +40,7 @@ public class PostViewSyncScheduler {
             // DB 및 Outbox 동기화 위임
             postService.flushViewCountsToDB(viewCountMap);
 
-            log.info("[ViewCount] {}개의 게시글 조회수가 DB에 동기화되었습니다.", viewCountMap.size());
+            log.debug("[ViewCount] {}개의 게시글 조회수가 DB에 동기화되었습니다.", viewCountMap.size());
 
             // 버퍼 정리
             postViewRepository.deleteProcessingBuffer();

@@ -7,7 +7,10 @@ spring:
     name: "post-service"
 
   config:
-    import: optional:file:post-service/.env[.properties]
+    import:
+      - optional:file:post-service/.env[.properties]
+      # 공통 로깅 설정 (common/support/logging)
+      - classpath:logging.yml
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -18,12 +21,10 @@ spring:
   jpa:
     database: mysql
     database-platform: org.hibernate.dialect.MySQLDialect
-    show-sql: true
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
-        format_sql: true
         default_batch_fetch_size: 100
 
   data:
@@ -38,14 +39,19 @@ spring:
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
       acks: all # (선택) 발행 보장 수준 (0, 1, all)
       retries: 3
+      # 운영 메모리 기준값(앱 EC2 t3.small 한 대에 JVM 7개). 클라이언트 기본값은 32MB 버퍼, 16KB 배치
+      buffer-memory: 8MB
+      batch-size: 8KB
+      compression-type: gzip
     consumer:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       group-id: traveler-group # 소비자 그룹 ID
       auto-offset-reset: earliest # 오프셋 정보가 없을 때 시작 위치 (latest, earliest)
       enable-auto-commit: false # 자동 커밋 여부
+      max-poll-records: 50 # 기본 500
     listener:
-      concurrency: 3 # 리스너의 병렬 처리 수준 (보통 파티션 개수와 맞춤)
+      concurrency: 1 # 운영은 트래픽이 적고 메모리가 빠듯해 1. local 프로필에서 3
       ack-mode: manual_immediate # 메시지 수신 확인 모드 (manual_immediate: 로직 완료 후 즉시 커밋)
 
   cloud:
@@ -58,7 +64,6 @@ spring:
 #        access-key: ${AWS_ACCESS_KEY_ID}
 #        secret-key: ${AWS_SECRET_ACCESS_KEY}
 
-
 swagger:
   info:
     paths-to-match:
@@ -66,10 +71,13 @@ swagger:
       - "/v1/comments/**"
       - "/v1/likes/**"
 
+# Swagger는 기본으로 끄고 local 프로필에서만 켠다
 springdoc:
   api-docs:
+    enabled: false
     path: /v1/posts/v3/api-docs
   swagger-ui:
+    enabled: false
     path: /swagger-ui.html
 
 # ECS 컨테이너 헬스체크용. liveness는 DB·Redis·ES 상태를 합산하지 않아 외부 의존 장애로 연쇄 재시작되지 않는다

@@ -31,6 +31,7 @@ ext {
 dependencies {
     // Common Module
     implementation project(':common:api')
+    implementation project(':common:support:logging')
     implementation project(':common:db')
 
     // Web & Lombok & Mysql

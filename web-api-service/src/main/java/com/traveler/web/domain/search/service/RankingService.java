@@ -35,6 +35,10 @@ public class RankingService {
     private static final String EVENT_RANKING_UPDATE = "ranking-update";
     private static final String EVENT_CONNECTED = "connected";
 
+    public int getActiveEmitterCount() {
+        return emitters.size();
+    }
+
     /**
      * 클라이언트가 SSE 연결을 시도할 때 호출
      */
@@ -92,7 +96,7 @@ public class RankingService {
                         RankingResponse.LiveDTO data =
                                 objectMapper.readValue(message.getBody(), RankingResponse.LiveDTO.class);
 
-                        log.info("Ranking data deserialized explicitly. Broadcasting...");
+                        log.debug("Ranking data deserialized explicitly. Broadcasting...");
                         broadcast(EVENT_RANKING_UPDATE, data);
                     } catch (IOException e) {
                         log.error("Failed to deserialize ranking data", e);

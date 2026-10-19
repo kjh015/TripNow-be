@@ -1,5 +1,10 @@
 package com.traveler.useractivity.domain.rule.filter.service.command;
 
+import static com.traveler.useractivity.global.audit.UserActivityServiceAuditAction.CREATE_FILTER_RULE;
+import static com.traveler.useractivity.global.audit.UserActivityServiceAuditAction.DELETE_FILTER_RULE;
+import static com.traveler.useractivity.global.audit.UserActivityServiceAuditAction.UPDATE_FILTER_RULE;
+
+import com.traveler.common.support.logging.audit.AuditLogger;
 import com.traveler.useractivity.domain.rule.filter.converter.SpelExpressionConverter;
 import com.traveler.useractivity.domain.rule.filter.dto.event.FilterRuleEvent;
 import com.traveler.useractivity.domain.rule.filter.dto.request.FilterRuleRequest;
@@ -24,6 +29,7 @@ public class FilterRuleCommandService {
     private final FilterRuleRepository filterRuleRepository;
     private final FilterRuleMapper filterRuleMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuditLogger auditLogger;
 
     public FilterRuleResponse.CreateDTO createFilterRule(Long logProcessId, FilterRuleRequest.CreateDTO dto) {
         LogProcess logProcess = logProcessRepository
@@ -37,6 +43,11 @@ public class FilterRuleCommandService {
         FilterRule filterRule = filterRuleMapper.toCreateEntity(dto, logProcess, expression);
 
         FilterRule savedRule = filterRuleRepository.save(filterRule);
+        auditLogger
+                .event(CREATE_FILTER_RULE, savedRule.getId())
+                .detail("logProcessId", logProcessId)
+                .detail("isActive", savedRule.isActive())
+                .log();
 
         if (savedRule.isActive()) {
             eventPublisher.publishEvent(new FilterRuleEvent.Evict(logProcessId));
@@ -54,7 +65,13 @@ public class FilterRuleCommandService {
         Long logProcessId = filterRule.getLogProcess().getId();
         String expression = SpelExpressionConverter.convert(dto.conditions());
 
+        boolean wasActive = filterRule.isActive();
         filterRule.update(dto.name(), expression, dto.conditions(), dto.isActive());
+        auditLogger
+                .event(UPDATE_FILTER_RULE, filterRuleId)
+                .detail("logProcessId", logProcessId)
+                .detail("isActive", wasActive + "->" + filterRule.isActive())
+                .log();
 
         eventPublisher.publishEvent(new FilterRuleEvent.Evict(logProcessId));
 
@@ -69,6 +86,10 @@ public class FilterRuleCommandService {
         Long logProcessId = filterRule.getLogProcess().getId();
 
         filterRule.delete();
+        auditLogger
+                .event(DELETE_FILTER_RULE, filterRuleId)
+                .detail("logProcessId", logProcessId)
+                .log();
 
         eventPublisher.publishEvent(new FilterRuleEvent.Evict(logProcessId));
 

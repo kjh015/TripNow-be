@@ -65,7 +65,8 @@ public class ApiErrorCodeOperationCustomizer implements OperationCustomizer {
                             "Swagger customizer 리플렉션 오류 [Annotation: {}, Method: {}]: {}",
                             annotation.annotationType().getSimpleName(),
                             method.getName(),
-                            e.getMessage());
+                            e.getMessage(),
+                            e);
                 }
             }
         }

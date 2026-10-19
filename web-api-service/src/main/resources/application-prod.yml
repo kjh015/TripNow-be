@@ -10,10 +10,3 @@ spring:
           default:
             connectTimeout: 300
             readTimeout: 1100
-            loggerLevel: BASIC
-
-springdoc:
-  api-docs:
-    enabled: false
-  swagger-ui:
-    enabled: false

@@ -2,14 +2,3 @@ spring:
   config:
     activate:
       on-profile: prod
-
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    show-sql: false
-
-springdoc:
-  api-docs:
-    enabled: false
-  swagger-ui:
-    enabled: false

@@ -26,6 +26,7 @@ ext {
 dependencies {
     // Common Module
     implementation project(':common:core')
+    implementation project(':common:support:logging')
 
     // Lombok
     compileOnly 'org.projectlombok:lombok'

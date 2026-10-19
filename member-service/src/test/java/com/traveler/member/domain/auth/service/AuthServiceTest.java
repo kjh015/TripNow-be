@@ -34,10 +34,14 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+@ExtendWith(OutputCaptureExtension.class)
 class AuthServiceTest {
 
     private static final Long EXISTING_MEMBER_ID = 7L;
@@ -150,6 +154,39 @@ class AuthServiceTest {
         assertThat(result.tokens().refreshToken()).isEqualTo("refresh-token");
         verify(refreshTokenRepository).save(eq(EXISTING_MEMBER_ID), anyString(), anyLong());
         verify(refreshTokenRepository, never()).deleteByMemberId(anyLong());
+    }
+
+    @Test
+    @DisplayName("저장된 토큰과 다른 리프레시 토큰으로 재발급하면 재사용 의심 WARN을 남기고 저장된 토큰을 지운다")
+    void reissue_reusedRefreshToken_warnsAndDeletesStoredToken(CapturedOutput output) {
+        givenValidRefreshToken(EXISTING_MEMBER_ID);
+        given(memberRepository.findActiveByIdWithRoles(EXISTING_MEMBER_ID))
+                .willReturn(Optional.of(member(EXISTING_MEMBER_ID)));
+        given(refreshTokenRepository.findByMemberId(EXISTING_MEMBER_ID))
+                .willReturn(Optional.of(TokenHashUtil.hash("rotated-newer-refresh-token")));
+
+        assertThatThrownBy(() -> authService.reissue(REFRESH_TOKEN))
+                .isInstanceOf(MemberServiceException.class)
+                .extracting("code")
+                .isEqualTo(MemberServiceErrorCode.INVALID_TOKEN_TYPE);
+        verify(refreshTokenRepository).deleteByMemberId(EXISTING_MEMBER_ID);
+        assertThat(output)
+                .contains("WARN")
+                .contains("리프레시 토큰 재사용 의심")
+                .contains("memberId=" + EXISTING_MEMBER_ID)
+                .doesNotContain(REFRESH_TOKEN);
+    }
+
+    @Test
+    @DisplayName("저장된 리프레시 토큰이 없으면 재사용 의심과 구분되는 WARN을 남긴다")
+    void reissue_noStoredRefreshToken_warnsDistinctMessage(CapturedOutput output) {
+        givenValidRefreshToken(EXISTING_MEMBER_ID);
+        given(memberRepository.findActiveByIdWithRoles(EXISTING_MEMBER_ID))
+                .willReturn(Optional.of(member(EXISTING_MEMBER_ID)));
+        given(refreshTokenRepository.findByMemberId(EXISTING_MEMBER_ID)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.reissue(REFRESH_TOKEN)).isInstanceOf(MemberServiceException.class);
+        assertThat(output).contains("저장된 리프레시 토큰 없음").doesNotContain("재사용 의심");
     }
 
     @Test

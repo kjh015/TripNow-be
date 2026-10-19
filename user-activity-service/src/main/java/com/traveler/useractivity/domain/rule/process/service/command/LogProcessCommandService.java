@@ -1,5 +1,10 @@
 package com.traveler.useractivity.domain.rule.process.service.command;
 
+import static com.traveler.useractivity.global.audit.UserActivityServiceAuditAction.CREATE_LOG_PROCESS;
+import static com.traveler.useractivity.global.audit.UserActivityServiceAuditAction.DELETE_LOG_PROCESS;
+import static com.traveler.useractivity.global.audit.UserActivityServiceAuditAction.UPDATE_LOG_PROCESS;
+
+import com.traveler.common.support.logging.audit.AuditLogger;
 import com.traveler.useractivity.domain.rule.dedup.dto.event.DedupRuleEvent;
 import com.traveler.useractivity.domain.rule.dedup.entity.DedupRule;
 import com.traveler.useractivity.domain.rule.dedup.repository.DedupRuleRepository;
@@ -32,6 +37,7 @@ public class LogProcessCommandService {
     private final DedupRuleRepository dedupRuleRepository;
     private final LogProcessMapper logProcessMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuditLogger auditLogger;
 
     public LogProcessResponse.CreateDTO createLogProcess(LogProcessRequest.CreateDTO dto) {
         // 이름은 파이프라인이 프로세스를 찾는 코드이므로 중복을 막음 (검사 없이 두면 DB 제약 위반이 500으로 나감)
@@ -42,6 +48,7 @@ public class LogProcessCommandService {
         LogProcess logProcess = logProcessMapper.toCreateEntity(dto);
 
         LogProcess savedLogProcess = logProcessRepository.save(logProcess);
+        auditLogger.log(CREATE_LOG_PROCESS, savedLogProcess.getId());
 
         return logProcessMapper.toCreateDTO(savedLogProcess);
     }
@@ -57,6 +64,7 @@ public class LogProcessCommandService {
         }
 
         logProcess.update(dto.name(), dto.description());
+        auditLogger.log(UPDATE_LOG_PROCESS, logProcessId);
 
         eventPublisher.publishEvent(new LogProcessEvent.EvictByCode());
 
@@ -75,6 +83,8 @@ public class LogProcessCommandService {
         formatRuleRepository.findAllByLogProcessId(logProcessId).forEach(FormatRule::delete);
         filterRuleRepository.findAllByLogProcessId(logProcessId).forEach(FilterRule::delete);
         dedupRuleRepository.findAllByLogProcessId(logProcessId).forEach(DedupRule::delete);
+        // 하위 규칙(format/filter/dedup)도 함께 삭제된다
+        auditLogger.log(DELETE_LOG_PROCESS, logProcessId);
 
         eventPublisher.publishEvent(new LogProcessEvent.EvictByCode());
         eventPublisher.publishEvent(new FormatRuleEvent.Evict(logProcessId));

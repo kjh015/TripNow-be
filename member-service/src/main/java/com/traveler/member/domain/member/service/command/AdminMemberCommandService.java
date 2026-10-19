@@ -1,5 +1,9 @@
 package com.traveler.member.domain.member.service.command;
 
+import static com.traveler.member.global.audit.MemberServiceAuditAction.DELETE_MEMBER;
+import static com.traveler.member.global.audit.MemberServiceAuditAction.GRANT_ADMIN;
+
+import com.traveler.common.support.logging.audit.AuditLogger;
 import com.traveler.member.domain.auth.support.AuthTokenRevoker;
 import com.traveler.member.domain.member.dto.response.AdminMemberResponse;
 import com.traveler.member.domain.member.entity.Member;
@@ -22,6 +26,7 @@ public class AdminMemberCommandService {
     private final MemberRepository memberRepository;
     private final MemberMapper memberMapper;
     private final AuthTokenRevoker authTokenRevoker;
+    private final AuditLogger auditLogger;
 
     public AdminMemberResponse.GrantAdminDTO grantAdminRole(Long memberId) {
         Member member = memberRepository
@@ -29,6 +34,7 @@ public class AdminMemberCommandService {
                 .orElseThrow(() -> new MemberServiceException(MemberServiceErrorCode.MEMBER_NOT_FOUND));
 
         member.addRole(RoleType.ROLE_ADMIN);
+        auditLogger.log(GRANT_ADMIN, memberId);
 
         return memberMapper.toGrantAdminDTO(member);
     }
@@ -39,6 +45,7 @@ public class AdminMemberCommandService {
                 .orElseThrow(() -> new MemberServiceException(MemberServiceErrorCode.MEMBER_NOT_FOUND));
 
         member.delete();
+        auditLogger.log(DELETE_MEMBER, memberId);
 
         // 대상의 액세스 토큰은 알 수 없어 재발급만 막는다(남은 액세스 토큰은 만료 시까지 유효)
         try {

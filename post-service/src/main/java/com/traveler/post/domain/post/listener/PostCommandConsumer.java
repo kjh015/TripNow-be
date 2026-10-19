@@ -8,6 +8,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
@@ -25,12 +26,15 @@ public class PostCommandConsumer {
     public void consumeS3Delete(
             @Payload String payload,
             @Header(value = "event-type", required = false) String eventType,
+            @Header(value = KafkaHeaders.RECEIVED_KEY, required = false) String key,
+            @Header(value = "event-id", required = false) String eventId,
             Acknowledgment ack) {
 
-        log.info("S3 Kafka Consumer [post-commands]: Type=[{}], Payload=[{}]", eventType, payload);
+        log.debug("S3 Kafka Consumer [post-commands]: Type=[{}], key=[{}], eventId=[{}]", eventType, key, eventId);
 
         if (eventType == null) {
-            log.error("Missing 'event-type' header. Payload: {}", payload);
+            // payload에는 게시글 본문 등이 들어가므로 남기지 않는다
+            log.error("Missing 'event-type' header. key={} eventId={}", key, eventId);
             ack.acknowledge();
             return;
         }

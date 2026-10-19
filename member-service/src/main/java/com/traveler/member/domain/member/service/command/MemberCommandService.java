@@ -57,6 +57,7 @@ public class MemberCommandService {
             // 중복 외의 무결성 위반 (Not Null 제약 위반, 데이터 잘림 등)
             throw new MemberServiceException(ErrorCode.DATABASE_ERROR, e);
         }
+        log.info("[Member] 회원 가입 memberId={}", member.getId());
         return memberMapper.toSignUpDTO(member);
     }
 
@@ -72,6 +73,7 @@ public class MemberCommandService {
         } catch (DataAccessException e) {
             log.warn("탈퇴 회원 토큰 무효화 실패 memberId={}", memberId, e);
         }
+        log.info("[Member] 회원 탈퇴 memberId={}", memberId);
         return memberMapper.toWithdrawDTO(member);
     }
 
@@ -104,6 +106,7 @@ public class MemberCommandService {
 
         String encodedNewPassword = passwordEncoder.encode(dto.newPassword());
         member.updatePassword(encodedNewPassword);
+        log.info("[Member] 비밀번호 변경 memberId={}", memberId);
 
         return memberMapper.toUpdatePasswordDTO(member);
     }

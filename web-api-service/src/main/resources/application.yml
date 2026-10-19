@@ -7,7 +7,10 @@ spring:
     name: "web-api-service"
 
   config:
-    import: optional:file:web-api-service/.env[.properties]
+    import:
+      - optional:file:web-api-service/.env[.properties]
+      # 공통 로깅 설정 (common/support/logging)
+      - classpath:logging.yml
 
   data:
     redis:
@@ -54,10 +57,13 @@ swagger:
     paths-to-match:
       - "/api/v1/**"
 
+# Swagger는 기본으로 끄고 local 프로필에서만 켠다
 springdoc:
   api-docs:
+    enabled: false
     path: /api/v1/web-api/v3/api-docs
   swagger-ui:
+    enabled: false
     path: /swagger-ui.html
   use-fqn: true
 

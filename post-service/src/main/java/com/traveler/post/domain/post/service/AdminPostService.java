@@ -1,7 +1,12 @@
 package com.traveler.post.domain.post.service;
 
+import static com.traveler.post.global.audit.PostServiceAuditAction.DELETE_POST;
+import static com.traveler.post.global.audit.PostServiceAuditAction.PERMANENT_DELETE_POST;
+import static com.traveler.post.global.audit.PostServiceAuditAction.RESTORE_POST;
+
 import com.traveler.common.api.converter.PageConverter;
 import com.traveler.common.core.response.PageResponse;
+import com.traveler.common.support.logging.audit.AuditLogger;
 import com.traveler.post.domain.post.dto.response.AdminPostResponse;
 import com.traveler.post.domain.post.entity.Post;
 import com.traveler.post.domain.post.mapper.AdminPostMapper;
@@ -28,6 +33,7 @@ public class AdminPostService {
     private final AdminPostMapper adminPostMapper;
     private final PostMapper postMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuditLogger auditLogger;
 
     @Transactional(readOnly = true)
     public PageResponse<AdminPostResponse.ListDTO> getPosts(Boolean deleted, Pageable pageable) {
@@ -57,6 +63,7 @@ public class AdminPostService {
 
         post.delete();
         eventPublisher.publishEvent(postMapper.toDeletedEvent(post));
+        auditLogger.log(DELETE_POST, postId);
 
         return adminPostMapper.toDeleteDTO(post);
     }
@@ -67,6 +74,7 @@ public class AdminPostService {
                 .orElseThrow(() -> new PostServiceException(PostServiceErrorCode.POST_NOT_FOUND));
 
         post.restore();
+        auditLogger.log(RESTORE_POST, postId);
 
         // 삭제 시 검색 문서가 제거되므로 재색인(Created) 후 통계(StatUpdated)를 동기화
         eventPublisher.publishEvent(postMapper.toCreatedEvent(post));
@@ -89,6 +97,10 @@ public class AdminPostService {
         if (!imageKeys.isEmpty()) {
             eventPublisher.publishEvent(postMapper.toImageDeleteEvent(postId, imageKeys));
         }
+        auditLogger
+                .event(PERMANENT_DELETE_POST, postId)
+                .detail("imageKeys", imageKeys.size())
+                .log();
 
         return new AdminPostResponse.PermanentDeleteDTO(postId);
     }

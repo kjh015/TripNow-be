@@ -1,6 +1,8 @@
 package com.traveler.post.global.config;
 
+import com.traveler.common.support.logging.executor.ThrottledRejectionLoggingHandler;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
@@ -22,7 +24,9 @@ public class AsyncConfig {
         // 스레드 이름 접두사: 모니터링 및 디버깅 시 식별 용이
         executor.setThreadNamePrefix("outbox-task-");
         // 큐가 가득 찼을 때 호출 스레드에서 직접 실행 (backpressure)
-        executor.setRejectedExecutionHandler(new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy());
+        // 요청 스레드가 Kafka 전송을 떠안아 응답이 느려지는 원인이 되므로 발생 사실을 로그로 남긴다
+        executor.setRejectedExecutionHandler(
+                new ThrottledRejectionLoggingHandler("OutboxExecutor", new ThreadPoolExecutor.CallerRunsPolicy()));
         // 종료 시 대기 설정
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(60);

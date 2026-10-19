@@ -1,0 +1,24 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            loggerLevel: BASIC
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+logging:
+  level:
+    # Feign은 클라이언트 인터페이스 로거의 DEBUG로 출력하므로 loggerLevel과 함께 켜야 로그가 나온다
+    com.traveler.web.domain.member.client: DEBUG
+    com.traveler.web.domain.post.client: DEBUG
+    com.traveler.web.domain.search.client: DEBUG
+    com.traveler.web.domain.useractivity.client: DEBUG

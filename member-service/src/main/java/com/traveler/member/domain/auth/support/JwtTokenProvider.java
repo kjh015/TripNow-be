@@ -131,7 +131,7 @@ public class JwtTokenProvider {
             log.warn("Expired JWT token: {}", e.getMessage());
             throw new MemberServiceException(MemberServiceErrorCode.EXPIRED_JWT);
         } catch (JwtException | IllegalArgumentException e) {
-            log.error("Invalid JWT token: {}", e.getMessage());
+            log.warn("Invalid JWT token: {}", e.getMessage());
             throw new MemberServiceException(determineErrorCode(e));
         }
     }

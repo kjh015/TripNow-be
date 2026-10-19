@@ -1,0 +1,22 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    # 하위 서비스 문서 라우트는 LocalApiDocsRouteConfig가 local 프로필에서만 등록한다
+    urls:
+      - name: Web Api Service
+        url: /api/v1/web-api/v3/api-docs/web-api-service
+      - name: Post Service Docs
+        url: /v1/posts/v3/api-docs/post-service
+      - name: Search Service Docs
+        url: /v1/search/v3/api-docs/search-service
+      - name: Member Service Docs
+        url: /v1/members/v3/api-docs/member-service
+      - name: UserActivity Service Docs
+        url: /v1/user-activity/v3/api-docs/user-activity-service
