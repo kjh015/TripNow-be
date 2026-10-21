@@ -42,6 +42,11 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
+    // Testcontainers (@Tag("integration") 테스트, ./gradlew integrationTest)
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:mysql'
+
     // JJWT
     implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
     implementation 'jakarta.xml.bind:jakarta.xml.bind-api'

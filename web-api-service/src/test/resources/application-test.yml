@@ -1,0 +1,20 @@
+# 통합 테스트 프로필. Redis 연결은 IntegrationTestSupport의 컨테이너(@ServiceConnection)가 덮어쓴다.
+spring:
+  data:
+    redis:
+      host: localhost
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            client-id: test-client-id
+            client-secret: test-client-secret
+
+app:
+  frontend:
+    redirect-uri: http://localhost:3000/oauth/callback
+
+eureka:
+  client:
+    enabled: false

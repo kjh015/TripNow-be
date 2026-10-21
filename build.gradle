@@ -50,6 +50,26 @@ subprojects {
             endWithNewline()
         }
     }
+
+    // 외부 인프라(MySQL·Kafka·Redis·ES)를 Testcontainers로 띄우는 테스트는 @Tag("integration")을 붙인다.
+    // test는 Docker 없이 도는 단위·슬라이스 테스트만, integrationTest는 통합 테스트만 실행한다.
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform {
+            if (name == 'integrationTest') {
+                includeTags 'integration'
+            } else {
+                excludeTags 'integration'
+            }
+        }
+    }
+
+    tasks.register('integrationTest', Test) {
+        description = 'Runs @Tag("integration") tests (Testcontainers, Docker required).'
+        group = 'verification'
+        testClassesDirs = sourceSets.test.output.classesDirs
+        classpath = sourceSets.test.runtimeClasspath
+        shouldRunAfter tasks.named('test')
+    }
 }
 
 // Git Hook을 설치하는 태스크
