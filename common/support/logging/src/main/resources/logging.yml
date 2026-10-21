@@ -10,3 +10,24 @@ logging:
     org.apache.kafka: WARN
     # 감사 로그는 서비스 로그 레벨 설정과 무관하게 항상 남긴다
     AUDIT: INFO
+
+---
+# 배포 환경(dev = 배포 테스트 서버, prod): 콘솔 로그를 한 줄 JSON(ECS)으로 출력해 ELK가 파싱 없이 적재한다.
+# MDC(userId 등)와 SLF4J key-value(감사 로그의 action·actor·target)는 같은 이름의 JSON 필드가 된다.
+# 로컬과 프로필 미지정 실행은 위의 사람이 읽는 형식을 유지한다.
+spring.config.activate.on-profile: dev | prod
+logging:
+  structured:
+    format:
+      console: ecs
+    ecs:
+      service:
+        name: ${spring.application.name}
+
+---
+spring.config.activate.on-profile: dev
+logging.structured.ecs.service.environment: dev
+
+---
+spring.config.activate.on-profile: prod
+logging.structured.ecs.service.environment: prod
