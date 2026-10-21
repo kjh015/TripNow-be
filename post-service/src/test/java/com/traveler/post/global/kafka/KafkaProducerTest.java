@@ -1,37 +1,33 @@
 package com.traveler.post.global.kafka;
 
+import static com.traveler.post.testsupport.KafkaTestSupport.header;
+import static com.traveler.post.testsupport.KafkaTestSupport.stubSuccessfulSend;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-import java.nio.charset.StandardCharsets;
-import java.util.concurrent.CompletableFuture;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.producer.RecordMetadata;
-import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.support.SendResult;
 
+@ExtendWith(MockitoExtension.class)
 class KafkaProducerTest {
 
-    @SuppressWarnings("unchecked")
-    private final KafkaTemplate<String, String> kafkaTemplate = mock(KafkaTemplate.class);
+    @Mock
+    private KafkaTemplate<String, String> kafkaTemplate;
 
-    private final KafkaProducer kafkaProducer = new KafkaProducer(kafkaTemplate);
+    @InjectMocks
+    private KafkaProducer kafkaProducer;
 
     @BeforeEach
     void setUp() {
-        given(kafkaTemplate.send(any(ProducerRecord.class))).willAnswer(invocation -> {
-            ProducerRecord<String, String> sent = invocation.getArgument(0);
-            RecordMetadata metadata = new RecordMetadata(new TopicPartition(sent.topic(), 0), 0, 0, 0, 0, 0);
-            return CompletableFuture.completedFuture(new SendResult<>(sent, metadata));
-        });
+        stubSuccessfulSend(kafkaTemplate);
     }
 
     @Test
@@ -52,9 +48,5 @@ class KafkaProducerTest {
         ArgumentCaptor<ProducerRecord<String, String>> captor = ArgumentCaptor.forClass(ProducerRecord.class);
         verify(kafkaTemplate).send(captor.capture());
         return captor.getValue();
-    }
-
-    private static String header(ProducerRecord<String, String> record, String name) {
-        return new String(record.headers().lastHeader(name).value(), StandardCharsets.UTF_8);
     }
 }

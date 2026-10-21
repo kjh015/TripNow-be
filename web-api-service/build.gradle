@@ -43,6 +43,13 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testCompileOnly 'org.projectlombok:lombok'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // Testcontainers (@Tag("integration") 테스트, ./gradlew integrationTest)
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+
+    // 하위 서비스 HTTP 응답 스텁 (Feign 에러 변환·타임아웃 테스트)
+    testImplementation 'org.wiremock:wiremock-standalone:3.10.0'
     testAnnotationProcessor 'org.projectlombok:lombok'
 
     //Eureka

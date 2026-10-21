@@ -57,6 +57,43 @@ jobs:
           retention-days: 7
 
   # ---------------------------------------------------------------------------
+  # Testcontainers 통합 테스트(@Tag("integration")). build 잡과 병렬로 돕니다.
+  # ubuntu 러너에는 Docker가 있어 MySQL·Kafka·Redis·ES 컨테이너를 그대로 띄웁니다.
+  # ---------------------------------------------------------------------------
+  integration-test:
+    name: Integration Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (Corretto)
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: "21"
+
+      - name: Setup Gradle (with cache)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      # 서비스마다 컨테이너를 따로 띄우므로 동시에 여러 모듈을 돌리면 러너 메모리(16GB)가 빠듯해 순차 실행합니다.
+      - name: Integration Test
+        run: ./gradlew integrationTest --no-daemon --no-parallel
+
+      - name: Upload integration test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-reports-${{ github.run_id }}
+          path: "**/build/reports/tests/integrationTest/**"
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
   # 도커 이미지가 실제로 빌드되는지까지 확인합니다.
   # 컴파일 자체는 build 잡이 이미 검증하므로, 이미지 빌드에 영향을 주는 파일이
   # 바뀐 경우(또는 수동 실행)에만 돌립니다.

@@ -1,11 +1,12 @@
 package com.traveler.post.domain.post.support;
 
+import static com.traveler.post.testsupport.fixture.PostFixture.MEMBER_1_KEY;
+import static com.traveler.post.testsupport.fixture.PostFixture.MEMBER_2_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -18,18 +19,25 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+@ExtendWith(MockitoExtension.class)
 class PostImageKeyValidatorTest {
 
     private static final Long MEMBER_ID = 1L;
-    private static final String OWN_KEY = "posts/1/3f2b8c1e-5d4a-4e6b-9c7d-1a2b3c4d5e6f.png";
 
-    private final S3Service s3Service = mock(S3Service.class);
-    private final PostImageKeyValidator validator = new PostImageKeyValidator(s3Service);
+    @Mock
+    private S3Service s3Service;
+
+    @InjectMocks
+    private PostImageKeyValidator validator;
 
     @ParameterizedTest
     @ValueSource(
@@ -57,8 +65,7 @@ class PostImageKeyValidatorTest {
     @Test
     @DisplayName("형식이 틀린 키가 하나라도 있으면 어떤 키도 S3에 조회하지 않는다")
     void checksFormatOfAllKeysBeforeCallingS3() {
-        assertThatThrownBy(() -> validator.validateNewKeys(
-                        MEMBER_ID, List.of(OWN_KEY, "posts/2/3f2b8c1e-5d4a-4e6b-9c7d-1a2b3c4d5e6f.png")))
+        assertThatThrownBy(() -> validator.validateNewKeys(MEMBER_ID, List.of(MEMBER_1_KEY, MEMBER_2_KEY)))
                 .isInstanceOf(PostServiceException.class);
 
         verifyNoInteractions(s3Service);
@@ -76,9 +83,9 @@ class PostImageKeyValidatorTest {
     @Test
     @DisplayName("S3에 없는 키는 거부하고 삭제도 하지 않는다")
     void rejectsNotUploadedKey() {
-        given(s3Service.findObjectSize(OWN_KEY)).willReturn(Optional.empty());
+        given(s3Service.findObjectSize(MEMBER_1_KEY)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> validator.validateNewKeys(MEMBER_ID, List.of(OWN_KEY)))
+        assertThatThrownBy(() -> validator.validateNewKeys(MEMBER_ID, List.of(MEMBER_1_KEY)))
                 .isInstanceOf(PostServiceException.class)
                 .extracting("code")
                 .isEqualTo(PostServiceErrorCode.POST_IMAGE_NOT_UPLOADED);
@@ -89,22 +96,22 @@ class PostImageKeyValidatorTest {
     @Test
     @DisplayName("10MB 초과 객체는 삭제하고 거부한다")
     void deletesAndRejectsOversizedObject() {
-        given(s3Service.findObjectSize(OWN_KEY)).willReturn(Optional.of(S3Service.MAX_FILE_SIZE + 1));
+        given(s3Service.findObjectSize(MEMBER_1_KEY)).willReturn(Optional.of(S3Service.MAX_FILE_SIZE + 1));
 
-        assertThatThrownBy(() -> validator.validateNewKeys(MEMBER_ID, List.of(OWN_KEY)))
+        assertThatThrownBy(() -> validator.validateNewKeys(MEMBER_ID, List.of(MEMBER_1_KEY)))
                 .isInstanceOf(PostServiceException.class)
                 .extracting("code")
                 .isEqualTo(PostServiceErrorCode.POST_IMAGE_TOO_LARGE);
 
-        verify(s3Service).deleteFilesByKeys(List.of(OWN_KEY));
+        verify(s3Service).deleteFilesByKeys(List.of(MEMBER_1_KEY));
     }
 
     @Test
     @DisplayName("10MB 경계값(정확히 10MB)은 통과한다")
     void allowsExactlyMaxFileSize() {
-        given(s3Service.findObjectSize(OWN_KEY)).willReturn(Optional.of(S3Service.MAX_FILE_SIZE));
+        given(s3Service.findObjectSize(MEMBER_1_KEY)).willReturn(Optional.of(S3Service.MAX_FILE_SIZE));
 
-        assertThatCode(() -> validator.validateNewKeys(MEMBER_ID, List.of(OWN_KEY)))
+        assertThatCode(() -> validator.validateNewKeys(MEMBER_ID, List.of(MEMBER_1_KEY)))
                 .doesNotThrowAnyException();
     }
 

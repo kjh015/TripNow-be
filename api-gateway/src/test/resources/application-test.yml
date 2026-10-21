@@ -1,0 +1,9 @@
+# 통합 테스트 프로필. Redis 연결은 IntegrationTestSupport의 컨테이너(@ServiceConnection)가 덮어쓴다.
+spring:
+  data:
+    redis:
+      host: localhost
+
+eureka:
+  client:
+    enabled: false

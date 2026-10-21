@@ -1,0 +1,15 @@
+# 통합 테스트 프로필. 연결 주소는 IntegrationTestSupport가 컨테이너 값으로 덮어쓴다.
+spring:
+  elasticsearch:
+    uris: localhost:9200
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: search-service-test
+  data:
+    redis:
+      host: localhost
+
+eureka:
+  client:
+    enabled: false

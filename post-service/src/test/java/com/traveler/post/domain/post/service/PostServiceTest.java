@@ -1,5 +1,8 @@
 package com.traveler.post.domain.post.service;
 
+import static com.traveler.post.testsupport.fixture.PostFixture.MEMBER_1_KEY;
+import static com.traveler.post.testsupport.fixture.PostFixture.MEMBER_1_KEY_2;
+import static com.traveler.post.testsupport.fixture.PostFixture.MEMBER_2_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -40,9 +43,6 @@ class PostServiceTest {
 
     private static final Long MEMBER_ID = 1L;
     private static final Long POST_ID = 10L;
-    private static final String OWN_KEY = "posts/1/3f2b8c1e-5d4a-4e6b-9c7d-1a2b3c4d5e6f.png";
-    private static final String OWN_KEY_2 = "posts/1/0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d.jpg";
-    private static final String OTHER_KEY = "posts/2/3f2b8c1e-5d4a-4e6b-9c7d-1a2b3c4d5e6f.png";
 
     private final PostRepository postRepository = mock(PostRepository.class);
     private final PostMapper postMapper = mock(PostMapper.class);
@@ -73,7 +73,7 @@ class PostServiceTest {
     @Test
     @DisplayName("생성: 타인 prefix 키는 S3 호출·저장·이벤트 발행 없이 거부된다")
     void createRejectsOtherMembersKey() {
-        assertThatThrownBy(() -> postService.createPost(MEMBER_ID, createDto(List.of(OWN_KEY, OTHER_KEY))))
+        assertThatThrownBy(() -> postService.createPost(MEMBER_ID, createDto(List.of(MEMBER_1_KEY, MEMBER_2_KEY))))
                 .isInstanceOf(PostServiceException.class)
                 .extracting("code")
                 .isEqualTo(PostServiceErrorCode.POST_IMAGE_INVALID_KEY);
@@ -86,24 +86,24 @@ class PostServiceTest {
     @DisplayName("수정: 타인 prefix 키는 S3 호출·이미지 삭제 이벤트 발행 없이 거부된다")
     void updateRejectsOtherMembersKey() {
         Post post = post(MEMBER_ID);
-        post.setImages(List.of(OWN_KEY));
+        post.setImages(List.of(MEMBER_1_KEY));
         given(postRepository.findByIdWithDetails(POST_ID)).willReturn(Optional.of(post));
 
-        assertThatThrownBy(() -> postService.updatePost(POST_ID, MEMBER_ID, updateDto(List.of(OTHER_KEY))))
+        assertThatThrownBy(() -> postService.updatePost(POST_ID, MEMBER_ID, updateDto(List.of(MEMBER_2_KEY))))
                 .isInstanceOf(PostServiceException.class)
                 .extracting("code")
                 .isEqualTo(PostServiceErrorCode.POST_IMAGE_INVALID_KEY);
 
         verifyNoInteractions(s3Service, eventPublisher, transactionTemplate);
-        assertThat(post.getImages()).extracting(PostImage::getImageKey).containsExactly(OWN_KEY);
+        assertThat(post.getImages()).extracting(PostImage::getImageKey).containsExactly(MEMBER_1_KEY);
     }
 
     @Test
     @DisplayName("생성: S3에 없는 키는 거부된다")
     void createRejectsNotUploadedKey() {
-        given(s3Service.findObjectSize(OWN_KEY)).willReturn(Optional.empty());
+        given(s3Service.findObjectSize(MEMBER_1_KEY)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> postService.createPost(MEMBER_ID, createDto(List.of(OWN_KEY))))
+        assertThatThrownBy(() -> postService.createPost(MEMBER_ID, createDto(List.of(MEMBER_1_KEY))))
                 .isInstanceOf(PostServiceException.class)
                 .extracting("code")
                 .isEqualTo(PostServiceErrorCode.POST_IMAGE_NOT_UPLOADED);
@@ -115,14 +115,14 @@ class PostServiceTest {
     @Test
     @DisplayName("생성: 10MB 초과 객체는 삭제 후 거부된다")
     void createRejectsAndDeletesOversizedObject() {
-        given(s3Service.findObjectSize(OWN_KEY)).willReturn(Optional.of(S3Service.MAX_FILE_SIZE + 1));
+        given(s3Service.findObjectSize(MEMBER_1_KEY)).willReturn(Optional.of(S3Service.MAX_FILE_SIZE + 1));
 
-        assertThatThrownBy(() -> postService.createPost(MEMBER_ID, createDto(List.of(OWN_KEY))))
+        assertThatThrownBy(() -> postService.createPost(MEMBER_ID, createDto(List.of(MEMBER_1_KEY))))
                 .isInstanceOf(PostServiceException.class)
                 .extracting("code")
                 .isEqualTo(PostServiceErrorCode.POST_IMAGE_TOO_LARGE);
 
-        verify(s3Service).deleteFilesByKeys(List.of(OWN_KEY));
+        verify(s3Service).deleteFilesByKeys(List.of(MEMBER_1_KEY));
         verify(postRepository, never()).save(any());
     }
 
@@ -131,10 +131,10 @@ class PostServiceTest {
     void createSavesValidKeys() {
         given(s3Service.findObjectSize(anyString())).willReturn(Optional.of(S3Service.MAX_FILE_SIZE));
 
-        postService.createPost(MEMBER_ID, createDto(List.of(OWN_KEY, OWN_KEY_2)));
+        postService.createPost(MEMBER_ID, createDto(List.of(MEMBER_1_KEY, MEMBER_1_KEY_2)));
 
-        verify(s3Service).findObjectSize(OWN_KEY);
-        verify(s3Service).findObjectSize(OWN_KEY_2);
+        verify(s3Service).findObjectSize(MEMBER_1_KEY);
+        verify(s3Service).findObjectSize(MEMBER_1_KEY_2);
         verify(postRepository).save(any());
     }
 
@@ -142,15 +142,15 @@ class PostServiceTest {
     @DisplayName("수정: 기존 키 유지 + 새 키 1개면 headObject는 새 키에 대해 1회만 호출된다")
     void updateChecksOnlyNewKey() {
         Post post = post(MEMBER_ID);
-        post.setImages(List.of(OWN_KEY));
+        post.setImages(List.of(MEMBER_1_KEY));
         given(postRepository.findByIdWithDetails(POST_ID)).willReturn(Optional.of(post));
-        given(s3Service.findObjectSize(OWN_KEY_2)).willReturn(Optional.of(1024L));
+        given(s3Service.findObjectSize(MEMBER_1_KEY_2)).willReturn(Optional.of(1024L));
 
-        postService.updatePost(POST_ID, MEMBER_ID, updateDto(List.of(OWN_KEY, OWN_KEY_2)));
+        postService.updatePost(POST_ID, MEMBER_ID, updateDto(List.of(MEMBER_1_KEY, MEMBER_1_KEY_2)));
 
         verify(s3Service, times(1)).findObjectSize(anyString());
-        verify(s3Service).findObjectSize(OWN_KEY_2);
-        assertThat(post.getImages()).extracting(PostImage::getImageKey).containsExactly(OWN_KEY, OWN_KEY_2);
+        verify(s3Service).findObjectSize(MEMBER_1_KEY_2);
+        assertThat(post.getImages()).extracting(PostImage::getImageKey).containsExactly(MEMBER_1_KEY, MEMBER_1_KEY_2);
         verify(postMapper, never()).toImageDeleteEvent(any(), any());
     }
 
@@ -158,12 +158,12 @@ class PostServiceTest {
     @DisplayName("수정: 이미지를 빼기만 하면 S3 조회 없이 삭제 이벤트가 발행된다")
     void updateRemovingImageSkipsHeadObject() {
         Post post = post(MEMBER_ID);
-        post.setImages(List.of(OWN_KEY, OWN_KEY_2));
+        post.setImages(List.of(MEMBER_1_KEY, MEMBER_1_KEY_2));
         given(postRepository.findByIdWithDetails(POST_ID)).willReturn(Optional.of(post));
         PostEvent.ImagesDelete event = new PostEvent.ImagesDelete(null);
-        given(postMapper.toImageDeleteEvent(POST_ID, List.of(OWN_KEY_2))).willReturn(event);
+        given(postMapper.toImageDeleteEvent(POST_ID, List.of(MEMBER_1_KEY_2))).willReturn(event);
 
-        postService.updatePost(POST_ID, MEMBER_ID, updateDto(List.of(OWN_KEY)));
+        postService.updatePost(POST_ID, MEMBER_ID, updateDto(List.of(MEMBER_1_KEY)));
 
         verifyNoInteractions(s3Service);
         verify(eventPublisher).publishEvent(event);
@@ -173,13 +173,13 @@ class PostServiceTest {
     @DisplayName("수정: 검증 후 트랜잭션 시작 전에 이미지가 바뀌어 검증하지 않은 키가 생기면 거부된다")
     void updateRejectsKeyChangedAfterValidation() {
         Post beforeValidation = post(MEMBER_ID);
-        beforeValidation.setImages(List.of(OWN_KEY));
+        beforeValidation.setImages(List.of(MEMBER_1_KEY));
         Post inTransaction = post(MEMBER_ID);
         given(postRepository.findByIdWithDetails(POST_ID))
                 .willReturn(Optional.of(beforeValidation))
                 .willReturn(Optional.of(inTransaction));
 
-        assertThatThrownBy(() -> postService.updatePost(POST_ID, MEMBER_ID, updateDto(List.of(OWN_KEY))))
+        assertThatThrownBy(() -> postService.updatePost(POST_ID, MEMBER_ID, updateDto(List.of(MEMBER_1_KEY))))
                 .isInstanceOf(PostServiceException.class)
                 .extracting("code")
                 .isEqualTo(PostServiceErrorCode.POST_IMAGE_INVALID_KEY);
@@ -193,7 +193,7 @@ class PostServiceTest {
     void updateRejectsNonOwnerBeforeImageCheck() {
         given(postRepository.findByIdWithDetails(eq(POST_ID))).willReturn(Optional.of(post(2L)));
 
-        assertThatThrownBy(() -> postService.updatePost(POST_ID, MEMBER_ID, updateDto(List.of(OWN_KEY))))
+        assertThatThrownBy(() -> postService.updatePost(POST_ID, MEMBER_ID, updateDto(List.of(MEMBER_1_KEY))))
                 .isInstanceOf(PostServiceException.class);
 
         verifyNoInteractions(s3Service, transactionTemplate);
@@ -204,8 +204,9 @@ class PostServiceTest {
     void deleteBatchUsesHardDeleter() {
         List<Long> ids = List.of(POST_ID, 11L);
         PostEvent.ImagesDeleteBatch event = new PostEvent.ImagesDeleteBatch(null);
-        given(postHardDeleter.hardDelete(ids)).willReturn(List.of(OWN_KEY));
-        given(postMapper.toImageDeleteBatchEvent(POST_ID, List.of(OWN_KEY))).willReturn(event);
+        given(postHardDeleter.hardDelete(ids)).willReturn(List.of(MEMBER_1_KEY));
+        given(postMapper.toImageDeleteBatchEvent(POST_ID, List.of(MEMBER_1_KEY)))
+                .willReturn(event);
 
         postService.deleteBatch(ids);
 
