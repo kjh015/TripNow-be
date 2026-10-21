@@ -1,5 +1,8 @@
 package com.traveler.member.domain.auth.support;
 
+import static com.traveler.member.testsupport.TestJwks.jwkSet;
+import static com.traveler.member.testsupport.TestJwks.privateJwk;
+import static com.traveler.member.testsupport.TestJwks.publicJwk;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -7,10 +10,7 @@ import com.traveler.member.domain.member.enums.RoleType;
 import com.traveler.member.global.exception.MemberServiceException;
 import com.traveler.member.global.exception.code.MemberServiceErrorCode;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Jwks;
 import java.security.KeyPair;
-import java.security.interfaces.ECPrivateKey;
-import java.security.interfaces.ECPublicKey;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -87,23 +87,5 @@ class JwtTokenProviderTest {
 
     private static JwtTokenProvider provider(String privateJwk, String publicJwks) {
         return new JwtTokenProvider(privateJwk, publicJwks, ONE_HOUR, ONE_HOUR);
-    }
-
-    private static String jwkSet(String... jwks) {
-        return "{\"keys\":[" + String.join(",", jwks) + "]}";
-    }
-
-    private static String publicJwk(KeyPair keyPair, String kid) {
-        return Jwks.json(
-                Jwks.builder().key((ECPublicKey) keyPair.getPublic()).id(kid).build());
-    }
-
-    private static String privateJwk(KeyPair keyPair, String kid) {
-        var builder =
-                Jwks.builder().key((ECPrivateKey) keyPair.getPrivate()).publicKey((ECPublicKey) keyPair.getPublic());
-        if (kid != null) {
-            builder.id(kid);
-        }
-        return Jwks.UNSAFE_JSON(builder.build());
     }
 }

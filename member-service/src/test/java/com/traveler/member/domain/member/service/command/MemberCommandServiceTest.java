@@ -26,6 +26,7 @@ import com.traveler.member.domain.member.repository.MemberRepository;
 import com.traveler.member.global.exception.MemberServiceException;
 import com.traveler.member.global.exception.code.MemberServiceErrorCode;
 import com.traveler.member.global.util.TokenHashUtil;
+import com.traveler.member.testsupport.fixture.MemberFixture;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.time.LocalDate;
@@ -36,7 +37,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.util.ReflectionTestUtils;
 
 class MemberCommandServiceTest {
 
@@ -63,8 +63,7 @@ class MemberCommandServiceTest {
 
     @BeforeEach
     void setUp() {
-        member = Member.builder().loginId("traveler").nickname("여행자").build();
-        ReflectionTestUtils.setField(member, "id", MEMBER_ID);
+        member = MemberFixture.member(MEMBER_ID);
         given(memberRepository.findById(MEMBER_ID)).willReturn(Optional.of(member));
         given(memberMapper.toWithdrawDTO(any())).willAnswer(invocation -> {
             Member m = invocation.getArgument(0);

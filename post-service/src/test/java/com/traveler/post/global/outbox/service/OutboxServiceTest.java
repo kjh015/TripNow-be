@@ -1,10 +1,11 @@
 package com.traveler.post.global.outbox.service;
 
+import static com.traveler.post.testsupport.KafkaTestSupport.header;
+import static com.traveler.post.testsupport.KafkaTestSupport.stubSuccessfulSend;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -16,41 +17,44 @@ import com.traveler.post.global.outbox.entity.Outbox;
 import com.traveler.post.global.outbox.event.OutboxEvent;
 import com.traveler.post.global.outbox.mapper.OutboxMapper;
 import com.traveler.post.global.outbox.repository.OutboxRepository;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.producer.RecordMetadata;
-import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.support.SendResult;
 
+@ExtendWith(MockitoExtension.class)
 class OutboxServiceTest {
 
     private static final String TOPIC = "post-service.post.events";
     private static final Long POST_ID = 10L;
 
-    @SuppressWarnings("unchecked")
-    private final KafkaTemplate<String, String> kafkaTemplate = mock(KafkaTemplate.class);
+    @Mock
+    private KafkaTemplate<String, String> kafkaTemplate;
 
-    private final OutboxRepository outboxRepository = mock(OutboxRepository.class);
-    private final OutboxStatusManager outboxStatusManager = mock(OutboxStatusManager.class);
-    private final OutboxRelay outboxRelay = new OutboxRelay(new KafkaProducer(kafkaTemplate), outboxStatusManager);
+    @Mock
+    private OutboxRepository outboxRepository;
 
-    private final OutboxService outboxService = new OutboxService(
-            outboxRepository, new ObjectMapper(), mock(OutboxMapper.class), outboxStatusManager, outboxRelay);
+    @Mock
+    private OutboxStatusManager outboxStatusManager;
+
+    @Mock
+    private OutboxMapper outboxMapper;
+
+    private OutboxService outboxService;
 
     @BeforeEach
     void setUp() {
-        given(kafkaTemplate.send(any(ProducerRecord.class))).willAnswer(invocation -> {
-            ProducerRecord<String, String> sent = invocation.getArgument(0);
-            RecordMetadata metadata = new RecordMetadata(new TopicPartition(sent.topic(), 0), 0, 0, 0, 0, 0);
-            return CompletableFuture.completedFuture(new SendResult<>(sent, metadata));
-        });
+        // 발행 경로(OutboxRelay → KafkaProducer)는 진짜로 두고 KafkaTemplate만 가짜로 둔다
+        OutboxRelay outboxRelay = new OutboxRelay(new KafkaProducer(kafkaTemplate), outboxStatusManager);
+        outboxService =
+                new OutboxService(outboxRepository, new ObjectMapper(), outboxMapper, outboxStatusManager, outboxRelay);
+        stubSuccessfulSend(kafkaTemplate);
     }
 
     @Test
@@ -110,9 +114,5 @@ class OutboxServiceTest {
         ArgumentCaptor<ProducerRecord<String, String>> captor = ArgumentCaptor.forClass(ProducerRecord.class);
         verify(kafkaTemplate, times(count)).send(captor.capture());
         return captor.getAllValues();
-    }
-
-    private static String header(ProducerRecord<String, String> record, String name) {
-        return new String(record.headers().lastHeader(name).value(), StandardCharsets.UTF_8);
     }
 }

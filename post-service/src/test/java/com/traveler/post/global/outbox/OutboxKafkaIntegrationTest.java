@@ -1,5 +1,6 @@
 package com.traveler.post.global.outbox;
 
+import static com.traveler.post.testsupport.KafkaTestSupport.header;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
@@ -13,8 +14,7 @@ import com.traveler.post.global.kafka.KafkaProducer;
 import com.traveler.post.global.outbox.entity.Outbox;
 import com.traveler.post.global.outbox.enums.OutboxStatus;
 import com.traveler.post.global.outbox.repository.OutboxRepository;
-import com.traveler.post.support.IntegrationTestSupport;
-import java.nio.charset.StandardCharsets;
+import com.traveler.post.testsupport.IntegrationTestSupport;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +24,6 @@ import java.util.UUID;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -120,10 +119,5 @@ class OutboxKafkaIntegrationTest extends IntegrationTestSupport {
                     .findFirst()
                     .orElseThrow();
         }
-    }
-
-    private static String header(ConsumerRecord<String, String> record, String name) {
-        Header header = record.headers().lastHeader(name);
-        return header == null ? null : new String(header.value(), StandardCharsets.UTF_8);
     }
 }

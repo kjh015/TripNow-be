@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.willThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -14,19 +13,34 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.traveler.search.domain.post.dto.message.PostSearchMessage;
 import com.traveler.search.domain.post.service.PostSearchCommandService;
 import java.time.Instant;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.kafka.support.Acknowledgment;
 
+@ExtendWith(MockitoExtension.class)
 class PostSearchMessageConsumerTest {
 
-    private final PostSearchCommandService commandService = mock(PostSearchCommandService.class);
-    private final Acknowledgment ack = mock(Acknowledgment.class);
+    @Mock
+    private PostSearchCommandService commandService;
+
+    @Mock
+    private Acknowledgment ack;
+
+    // Spring Boot가 앱에 주입하는 것과 같은 설정의 진짜 ObjectMapper
     private final ObjectMapper objectMapper = Jackson2ObjectMapperBuilder.json().build();
 
-    private final PostSearchMessageConsumer consumer = new PostSearchMessageConsumer(commandService, objectMapper);
+    private PostSearchMessageConsumer consumer;
+
+    @BeforeEach
+    void setUp() {
+        consumer = new PostSearchMessageConsumer(commandService, objectMapper);
+    }
 
     @Test
     @DisplayName("CREATED는 게시글 생성 메시지로 변환해 문서를 만들고 커밋한다")

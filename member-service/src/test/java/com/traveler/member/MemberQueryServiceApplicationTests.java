@@ -1,6 +1,6 @@
 package com.traveler.member;
 
-import com.traveler.member.support.IntegrationTestSupport;
+import com.traveler.member.testsupport.IntegrationTestSupport;
 import org.junit.jupiter.api.Test;
 
 class MemberQueryServiceApplicationTests extends IntegrationTestSupport {

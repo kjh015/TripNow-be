@@ -1,5 +1,7 @@
 package com.traveler.search.domain.post.service;
 
+import static com.traveler.search.testsupport.fixture.SearchFixture.READABLE_TIMESTAMP;
+import static com.traveler.search.testsupport.fixture.SearchFixture.nextId;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -8,10 +10,8 @@ import com.traveler.search.domain.post.document.PostDocument;
 import com.traveler.search.domain.post.dto.message.PostSearchMessage;
 import com.traveler.search.domain.post.repository.PostDocumentRepository;
 import com.traveler.search.global.util.HangulUtils;
-import com.traveler.search.support.IntegrationTestSupport;
-import java.time.Instant;
+import com.traveler.search.testsupport.IntegrationTestSupport;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,9 +19,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.NestedExceptionUtils;
 
 class PostSearchCommandServiceIntegrationTest extends IntegrationTestSupport {
-
-    // 컨테이너를 테스트 클래스끼리 공유하므로 문서 ID가 겹치지 않게 한다
-    private static final AtomicLong IDS = new AtomicLong(System.currentTimeMillis());
 
     @Autowired
     private PostSearchCommandService commandService;
@@ -32,7 +29,7 @@ class PostSearchCommandServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("생성 메시지로 문서를 만들고 초성 필드와 통계 기본값을 채운다")
     void createDocument() {
-        long postId = IDS.incrementAndGet();
+        long postId = nextId();
 
         commandService.createDocument(created(postId, "경주 황리단길"));
 
@@ -47,8 +44,8 @@ class PostSearchCommandServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("같은 생성 메시지를 두 번 받아도 문서는 하나이고 내용이 같다")
     void createDocumentTwice() {
-        long postId = IDS.incrementAndGet();
-        long memberId = IDS.incrementAndGet();
+        long postId = nextId();
+        long memberId = nextId();
         PostSearchMessage.CreatedDTO message = created(postId, memberId, "중복 수신");
 
         commandService.createDocument(message);
@@ -62,11 +59,11 @@ class PostSearchCommandServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("부분 갱신은 메시지에 담긴 필드만 바꾸고 나머지는 유지한다")
     void updateDocumentPartially() {
-        long postId = IDS.incrementAndGet();
+        long postId = nextId();
         commandService.createDocument(created(postId, "원래 제목"));
 
-        commandService.updateDocument(
-                new PostSearchMessage.UpdatedDTO(postId, "바뀐 제목", null, null, null, null, null, now(), null));
+        commandService.updateDocument(new PostSearchMessage.UpdatedDTO(
+                postId, "바뀐 제목", null, null, null, null, null, READABLE_TIMESTAMP, null));
 
         PostDocument doc = postDocumentRepository.findById(postId).orElseThrow();
         assertThat(doc.getTitle()).isEqualTo("바뀐 제목");
@@ -77,7 +74,7 @@ class PostSearchCommandServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("통계 갱신은 카운트와 인기 점수를 함께 저장하고, 같은 메시지를 다시 받아도 값이 같다")
     void updateStatisticsIsIdempotent() {
-        long postId = IDS.incrementAndGet();
+        long postId = nextId();
         commandService.createDocument(created(postId, "통계"));
         PostSearchMessage.StatUpdatedDTO stat = new PostSearchMessage.StatUpdatedDTO(postId, 4.0, 2L, 3L, 10L);
 
@@ -94,7 +91,7 @@ class PostSearchCommandServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("같은 삭제 메시지를 두 번 받아도 예외 없이 문서가 없는 상태로 끝난다")
     void deleteDocumentTwice() {
-        long postId = IDS.incrementAndGet();
+        long postId = nextId();
         commandService.createDocument(created(postId, "삭제"));
 
         commandService.deleteDocument(new PostSearchMessage.DeletedDTO(postId));
@@ -106,7 +103,7 @@ class PostSearchCommandServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("삭제 후 도착한 갱신·통계 이벤트는 404로 실패하고 문서를 되살리지 않는다")
     void updateAfterDeleteFails() {
-        long postId = IDS.incrementAndGet();
+        long postId = nextId();
         commandService.createDocument(created(postId, "삭제 후 갱신"));
         commandService.deleteDocument(new PostSearchMessage.DeletedDTO(postId));
 
@@ -140,13 +137,7 @@ class PostSearchCommandServiceIntegrationTest extends IntegrationTestSupport {
                 "GYEONGGI",
                 "황리단길",
                 "경상북도 경주시",
-                now(),
+                READABLE_TIMESTAMP,
                 List.of(new PostSearchMessage.ImageInfo("posts/" + memberId + "/a.png", 0)));
-    }
-
-    // 부분 갱신은 ES 클라이언트가 Instant를 그대로 직렬화하는데, Spring Data ES는 소수 6자리 형식만 다시 읽는다
-    // (소수 0·3·9자리는 조회 시 ConversionException, 보고서 "추가 발견"). 여기서는 읽을 수 있는 형식으로 고정한다
-    private static Instant now() {
-        return Instant.parse("2026-10-17T09:00:00.123456Z");
     }
 }

@@ -3,7 +3,6 @@ package com.traveler.post.domain.post.scheduler;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -13,15 +12,24 @@ import com.traveler.post.domain.post.service.PostService;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+@ExtendWith(MockitoExtension.class)
 class PostViewSyncSchedulerTest {
 
     private static final String LOCK_TOKEN = "lock-token";
 
-    private final PostViewRepository postViewRepository = mock(PostViewRepository.class);
-    private final PostService postService = mock(PostService.class);
+    @Mock
+    private PostViewRepository postViewRepository;
 
-    private final PostViewSyncScheduler scheduler = new PostViewSyncScheduler(postViewRepository, postService);
+    @Mock
+    private PostService postService;
+
+    @InjectMocks
+    private PostViewSyncScheduler scheduler;
 
     @Test
     @DisplayName("락을 얻지 못하면 버퍼를 건드리지 않고 건너뛴다")

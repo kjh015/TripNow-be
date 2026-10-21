@@ -1,10 +1,7 @@
-package com.traveler.member.support;
+package com.traveler.member.testsupport;
 
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Jwks;
 import java.security.KeyPair;
-import java.security.interfaces.ECPrivateKey;
-import java.security.interfaces.ECPublicKey;
 import org.junit.jupiter.api.Tag;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -41,17 +38,7 @@ public abstract class IntegrationTestSupport {
 
     @DynamicPropertySource
     static void jwtProperties(DynamicPropertyRegistry registry) {
-        // Jwks.json()은 개인키 값을 가려서 출력하므로 UNSAFE_JSON으로 직렬화한다
-        String privateJwk = Jwks.UNSAFE_JSON(Jwks.builder()
-                .key((ECPrivateKey) JWT_KEY_PAIR.getPrivate())
-                .publicKey((ECPublicKey) JWT_KEY_PAIR.getPublic())
-                .id(JWT_KID)
-                .build());
-        String publicJwk = Jwks.json(Jwks.builder()
-                .key((ECPublicKey) JWT_KEY_PAIR.getPublic())
-                .id(JWT_KID)
-                .build());
-        registry.add("app.jwt.private-jwk", () -> privateJwk);
-        registry.add("app.jwt.public-jwks", () -> "{\"keys\":[" + publicJwk + "]}");
+        registry.add("app.jwt.private-jwk", () -> TestJwks.privateJwk(JWT_KEY_PAIR, JWT_KID));
+        registry.add("app.jwt.public-jwks", () -> TestJwks.jwkSet(TestJwks.publicJwk(JWT_KEY_PAIR, JWT_KID)));
     }
 }

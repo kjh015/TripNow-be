@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -15,30 +14,44 @@ import com.traveler.post.domain.like.mapper.LikeMapper;
 import com.traveler.post.domain.like.repository.LikeRepository;
 import com.traveler.post.domain.post.entity.Post;
 import com.traveler.post.domain.post.repository.PostRepository;
+import com.traveler.post.testsupport.fixture.PostFixture;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 
+@ExtendWith(MockitoExtension.class)
 class LikeServiceTest {
 
     private static final Long MEMBER_ID = 1L;
     private static final Long POST_ID = 10L;
 
-    private final LikeRepository likeRepository = mock(LikeRepository.class);
-    private final PostRepository postRepository = mock(PostRepository.class);
-    private final LikeMapper likeMapper = mock(LikeMapper.class);
-    private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
+    @Mock
+    private LikeRepository likeRepository;
 
-    private final LikeService likeService = new LikeService(likeRepository, postRepository, likeMapper, eventPublisher);
+    @Mock
+    private PostRepository postRepository;
+
+    @Mock
+    private LikeMapper likeMapper;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
+    @InjectMocks
+    private LikeService likeService;
 
     private Post post;
 
     @BeforeEach
     void setUp() {
-        post = Post.builder().id(POST_ID).memberId(2L).build();
+        post = PostFixture.post(POST_ID, 2L);
         given(postRepository.findByIdWithLock(POST_ID)).willReturn(Optional.of(post));
     }
 

@@ -7,7 +7,8 @@ import com.traveler.post.domain.comment.service.CommentService;
 import com.traveler.post.domain.like.dto.request.LikeRequest;
 import com.traveler.post.domain.post.entity.Post;
 import com.traveler.post.domain.post.repository.PostRepository;
-import com.traveler.post.support.IntegrationTestSupport;
+import com.traveler.post.testsupport.IntegrationTestSupport;
+import com.traveler.post.testsupport.fixture.PostFixture;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -86,9 +87,7 @@ class LikeCommentConcurrencyIntegrationTest extends IntegrationTestSupport {
     }
 
     private Long savePost() {
-        return postRepository
-                .save(Post.builder().memberId(1L).title("동시성").content("본문").build())
-                .getId();
+        return postRepository.save(PostFixture.post(1L)).getId();
     }
 
     private long likeCount(Long postId) {

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.traveler.post.domain.comment.entity.Comment;
 import com.traveler.post.domain.post.entity.Post;
+import com.traveler.post.testsupport.fixture.PostFixture;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -46,7 +47,7 @@ class CommentRepositoryTest {
     @Test
     @DisplayName("만료된 소프트 삭제 댓글을 조회해 배치 삭제하면 실제로 지워지고 다시 조회되지 않는다")
     void expiredCommentsAreFoundAndDeleted() {
-        Post post = Post.builder().memberId(1L).title("title").build();
+        Post post = PostFixture.post(1L);
         em.persist(post);
         Comment expired = persistComment(post, true);
         Comment active = persistComment(post, false);

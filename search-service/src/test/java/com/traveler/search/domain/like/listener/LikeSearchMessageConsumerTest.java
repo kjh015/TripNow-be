@@ -1,6 +1,5 @@
 package com.traveler.search.domain.like.listener;
 
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -9,18 +8,33 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.traveler.search.domain.like.dto.message.LikeSearchMessage;
 import com.traveler.search.domain.like.service.LikeSearchCommandService;
 import java.time.Instant;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.kafka.support.Acknowledgment;
 
+@ExtendWith(MockitoExtension.class)
 class LikeSearchMessageConsumerTest {
 
-    private final LikeSearchCommandService commandService = mock(LikeSearchCommandService.class);
-    private final Acknowledgment ack = mock(Acknowledgment.class);
+    @Mock
+    private LikeSearchCommandService commandService;
+
+    @Mock
+    private Acknowledgment ack;
+
+    // Spring Boot가 앱에 주입하는 것과 같은 설정의 진짜 ObjectMapper
     private final ObjectMapper objectMapper = Jackson2ObjectMapperBuilder.json().build();
 
-    private final LikeSearchMessageConsumer consumer = new LikeSearchMessageConsumer(commandService, objectMapper);
+    private LikeSearchMessageConsumer consumer;
+
+    @BeforeEach
+    void setUp() {
+        consumer = new LikeSearchMessageConsumer(commandService, objectMapper);
+    }
 
     @Test
     @DisplayName("ADDED는 좋아요 문서를 만들고, REMOVED는 삭제한다")

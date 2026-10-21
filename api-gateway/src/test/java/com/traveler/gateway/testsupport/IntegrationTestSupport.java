@@ -1,8 +1,6 @@
-package com.traveler.gateway.support;
+package com.traveler.gateway.testsupport;
 
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Jwks;
-import java.security.interfaces.ECPublicKey;
 import org.junit.jupiter.api.Tag;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -29,10 +27,7 @@ public abstract class IntegrationTestSupport {
 
     @DynamicPropertySource
     static void jwtProperties(DynamicPropertyRegistry registry) {
-        String publicJwk = Jwks.json(Jwks.builder()
-                .key((ECPublicKey) Jwts.SIG.ES256.keyPair().build().getPublic())
-                .id("test-v1")
-                .build());
-        registry.add("app.jwt.public-jwks", () -> "{\"keys\":[" + publicJwk + "]}");
+        String publicJwk = TestJwks.publicJwk(Jwts.SIG.ES256.keyPair().build(), "test-v1");
+        registry.add("app.jwt.public-jwks", () -> TestJwks.jwkSet(publicJwk));
     }
 }

@@ -1,6 +1,6 @@
 package com.traveler.web;
 
-import com.traveler.web.support.IntegrationTestSupport;
+import com.traveler.web.testsupport.IntegrationTestSupport;
 import org.junit.jupiter.api.Test;
 
 class WebApiServiceApplicationTests extends IntegrationTestSupport {

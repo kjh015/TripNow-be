@@ -1,6 +1,5 @@
 package com.traveler.search.domain.comment.listener;
 
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -9,19 +8,33 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.traveler.search.domain.comment.dto.message.CommentSearchMessage;
 import com.traveler.search.domain.comment.service.CommentSearchCommandService;
 import java.time.Instant;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.kafka.support.Acknowledgment;
 
+@ExtendWith(MockitoExtension.class)
 class CommentSearchMessageConsumerTest {
 
-    private final CommentSearchCommandService commandService = mock(CommentSearchCommandService.class);
-    private final Acknowledgment ack = mock(Acknowledgment.class);
+    @Mock
+    private CommentSearchCommandService commandService;
+
+    @Mock
+    private Acknowledgment ack;
+
+    // Spring Boot가 앱에 주입하는 것과 같은 설정의 진짜 ObjectMapper
     private final ObjectMapper objectMapper = Jackson2ObjectMapperBuilder.json().build();
 
-    private final CommentSearchMessageConsumer consumer =
-            new CommentSearchMessageConsumer(commandService, objectMapper);
+    private CommentSearchMessageConsumer consumer;
+
+    @BeforeEach
+    void setUp() {
+        consumer = new CommentSearchMessageConsumer(commandService, objectMapper);
+    }
 
     @Test
     @DisplayName("CREATED는 댓글 문서를 만든다")

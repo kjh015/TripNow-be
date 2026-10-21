@@ -1,15 +1,15 @@
 package com.traveler.search.domain.post.listener;
 
+import static com.traveler.search.testsupport.fixture.SearchFixture.nextId;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import com.traveler.search.domain.post.document.PostDocument;
 import com.traveler.search.domain.post.repository.PostDocumentRepository;
-import com.traveler.search.support.IntegrationTestSupport;
+import com.traveler.search.testsupport.IntegrationTestSupport;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,7 +24,6 @@ import org.springframework.kafka.core.KafkaTemplate;
 class PostSearchMessageConsumerIntegrationTest extends IntegrationTestSupport {
 
     private static final Duration TIMEOUT = Duration.ofSeconds(30);
-    private static final AtomicLong IDS = new AtomicLong(System.currentTimeMillis());
 
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
@@ -38,7 +37,7 @@ class PostSearchMessageConsumerIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("Outbox 형식의 CREATED 메시지를 받으면 ES 문서가 생기고, 같은 메시지가 다시 와도 문서는 같다")
     void createdMessageCreatesDocument() throws Exception {
-        long postId = IDS.incrementAndGet();
+        long postId = nextId();
         String eventId = UUID.randomUUID().toString();
         String payload = createdPayload(postId, "카프카로 온 게시글");
 
@@ -59,7 +58,7 @@ class PostSearchMessageConsumerIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("event-type 헤더가 없는 메시지는 건너뛰고, 같은 파티션의 다음 메시지를 정상 처리한다")
     void missingEventTypeDoesNotBlockPartition() throws Exception {
-        long postId = IDS.incrementAndGet();
+        long postId = nextId();
 
         send(postId, null, UUID.randomUUID().toString(), createdPayload(postId, "헤더 없음"));
         send(postId, "CREATED", UUID.randomUUID().toString(), createdPayload(postId, "헤더 있음"));

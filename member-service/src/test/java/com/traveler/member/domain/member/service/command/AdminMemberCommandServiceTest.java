@@ -21,6 +21,7 @@ import com.traveler.member.domain.member.entity.Member;
 import com.traveler.member.domain.member.enums.RoleType;
 import com.traveler.member.domain.member.mapper.MemberMapper;
 import com.traveler.member.domain.member.repository.MemberRepository;
+import com.traveler.member.testsupport.fixture.MemberFixture;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,7 +32,6 @@ import org.slf4j.MDC;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.data.redis.RedisConnectionFailureException;
-import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(OutputCaptureExtension.class)
 class AdminMemberCommandServiceTest {
@@ -55,8 +55,7 @@ class AdminMemberCommandServiceTest {
 
     @BeforeEach
     void setUp() {
-        member = Member.builder().loginId("traveler").nickname("여행자").build();
-        ReflectionTestUtils.setField(member, "id", MEMBER_ID);
+        member = MemberFixture.member(MEMBER_ID);
         given(memberRepository.findById(MEMBER_ID)).willReturn(Optional.of(member));
         given(memberMapper.toDeleteDTO(any())).willAnswer(invocation -> {
             Member m = invocation.getArgument(0);

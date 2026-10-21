@@ -1,5 +1,7 @@
 package com.traveler.post.domain.post.support;
 
+import static com.traveler.post.testsupport.fixture.PostFixture.MEMBER_1_KEY;
+import static com.traveler.post.testsupport.fixture.PostFixture.MEMBER_1_KEY_2;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.traveler.post.domain.comment.entity.Comment;
@@ -36,9 +38,6 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 @Import({PostHardDeleter.class, PostHardDeleterTest.AuditingConfig.class})
 class PostHardDeleterTest {
 
-    private static final String IMAGE_KEY_1 = "posts/1/3f2b8c1e-5d4a-4e6b-9c7d-1a2b3c4d5e6f.png";
-    private static final String IMAGE_KEY_2 = "posts/1/0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d.jpg";
-
     @TestConfiguration
     @EnableJpaAuditing
     static class AuditingConfig {}
@@ -63,7 +62,7 @@ class PostHardDeleterTest {
 
         List<String> imageKeys = postHardDeleter.hardDelete(List.of(target.getId()));
 
-        assertThat(imageKeys).containsExactlyInAnyOrder(IMAGE_KEY_1, IMAGE_KEY_2);
+        assertThat(imageKeys).containsExactlyInAnyOrder(MEMBER_1_KEY, MEMBER_1_KEY_2);
         assertThat(count("SELECT COUNT(*) FROM post WHERE id = ?1", target.getId()))
                 .isZero();
         assertThat(count("SELECT COUNT(*) FROM post_image WHERE post_id = ?1", target.getId()))
@@ -129,8 +128,8 @@ class PostHardDeleterTest {
                 .content("content")
                 .travelPlace(TravelPlace.builder().name("place").build())
                 .build();
-        post.addPostImage(IMAGE_KEY_1, 1);
-        post.addPostImage(IMAGE_KEY_2, 2);
+        post.addPostImage(MEMBER_1_KEY, 1);
+        post.addPostImage(MEMBER_1_KEY_2, 2);
         em.persist(post);
 
         em.persist(Like.builder().memberId(2L).post(post).build());

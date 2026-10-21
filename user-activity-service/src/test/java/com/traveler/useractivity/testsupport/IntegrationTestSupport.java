@@ -1,4 +1,4 @@
-package com.traveler.useractivity.support;
+package com.traveler.useractivity.testsupport;
 
 import org.junit.jupiter.api.Tag;
 import org.springframework.boot.test.context.SpringBootTest;

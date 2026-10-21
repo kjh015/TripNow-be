@@ -1,5 +1,7 @@
 package com.traveler.gateway.support.auth;
 
+import static com.traveler.gateway.testsupport.TestJwks.jwkSet;
+import static com.traveler.gateway.testsupport.TestJwks.publicJwk;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -27,8 +29,7 @@ class JwtTokenProviderTest {
     private static final KeyPair NEW_KEY = Jwts.SIG.ES256.keyPair().build();
     private static final KeyPair UNTRUSTED_KEY = Jwts.SIG.ES256.keyPair().build();
 
-    private static final String JWK_SET =
-            "{\"keys\":[" + publicJwk(OLD_KEY, "v1") + "," + publicJwk(NEW_KEY, "v2") + "]}";
+    private static final String JWK_SET = jwkSet(publicJwk(OLD_KEY, "v1"), publicJwk(NEW_KEY, "v2"));
 
     @Test
     @DisplayName("JWK Set의 두 키로 각각 서명한 토큰이 모두 검증된다")
@@ -103,14 +104,13 @@ class JwtTokenProviderTest {
         String withoutKid =
                 Jwks.json(Jwks.builder().key((ECPublicKey) OLD_KEY.getPublic()).build());
 
-        assertThatThrownBy(() -> new JwtTokenProvider("{\"keys\":[" + withoutKid + "]}"))
-                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> new JwtTokenProvider(jwkSet(withoutKid))).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
     @DisplayName("kid가 중복되면 기동에 실패한다")
     void rejectsDuplicateKid() {
-        String duplicated = "{\"keys\":[" + publicJwk(OLD_KEY, "v1") + "," + publicJwk(NEW_KEY, "v1") + "]}";
+        String duplicated = jwkSet(publicJwk(OLD_KEY, "v1"), publicJwk(NEW_KEY, "v1"));
 
         assertThatThrownBy(() -> new JwtTokenProvider(duplicated)).isInstanceOf(IllegalStateException.class);
     }
@@ -124,19 +124,13 @@ class JwtTokenProviderTest {
                 .id("v1")
                 .build());
 
-        assertThatThrownBy(() -> new JwtTokenProvider("{\"keys\":[" + privateJwk + "]}"))
-                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> new JwtTokenProvider(jwkSet(privateJwk))).isInstanceOf(IllegalStateException.class);
     }
 
     private static void assertSignatureInvalid(JwtTokenProvider provider, String token) {
         assertThatThrownBy(() -> provider.validateToken(token).block())
                 .isInstanceOfSatisfying(ApiGatewayNoStackException.class, e -> assertThat(e.getCode())
                         .isEqualTo(ApiGatewayErrorCode.SIGNATURE_INVALID_JWT));
-    }
-
-    private static String publicJwk(KeyPair keyPair, String kid) {
-        return Jwks.json(
-                Jwks.builder().key((ECPublicKey) keyPair.getPublic()).id(kid).build());
     }
 
     private static String token(KeyPair keyPair, String kid) {

@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import com.traveler.common.core.response.PageResponse;
@@ -17,18 +16,31 @@ import com.traveler.web.domain.search.mapper.PostSearchMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mapstruct.factory.Mappers;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+@ExtendWith(MockitoExtension.class)
 class PostSearchFacadeTest {
 
-    private final PostSearchClientAdapter postSearchClientAdapter = mock(PostSearchClientAdapter.class);
-    private final MemberClientAdapter memberClientAdapter = mock(MemberClientAdapter.class);
-    private final PostSearchMapper postSearchMapper = Mappers.getMapper(PostSearchMapper.class);
+    @Mock
+    private PostSearchClientAdapter postSearchClientAdapter;
 
-    private final PostSearchFacade facade =
-            new PostSearchFacade(postSearchClientAdapter, postSearchMapper, memberClientAdapter);
+    @Mock
+    private MemberClientAdapter memberClientAdapter;
+
+    private PostSearchFacade facade;
+
+    @BeforeEach
+    void setUp() {
+        // 매퍼는 MapStruct가 만든 진짜 구현체를 쓴다
+        facade = new PostSearchFacade(
+                postSearchClientAdapter, Mappers.getMapper(PostSearchMapper.class), memberClientAdapter);
+    }
 
     @Test
     @DisplayName("검색 결과의 작성자 ID를 모아 한 번에 닉네임을 조회하고, 게시글마다 작성자 닉네임을 붙인다")

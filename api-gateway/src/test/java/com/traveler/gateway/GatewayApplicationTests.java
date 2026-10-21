@@ -1,6 +1,6 @@
 package com.traveler.gateway;
 
-import com.traveler.gateway.support.IntegrationTestSupport;
+import com.traveler.gateway.testsupport.IntegrationTestSupport;
 import org.junit.jupiter.api.Test;
 
 class GatewayApplicationTests extends IntegrationTestSupport {

@@ -39,7 +39,8 @@ import org.springframework.test.context.DynamicPropertySource;
 @SpringBootTest(classes = MemberClientAdapterWireMockTest.FeignTestConfig.class)
 class MemberClientAdapterWireMockTest {
 
-    private static final int READ_TIMEOUT_MILLIS = 500;
+    // 첫 요청은 Feign·HTTP 클라이언트 초기화가 겹쳐 느리다. 빌드가 바쁠 때 정상 응답이 타임아웃으로 바뀌지 않게 여유를 둔다
+    private static final int READ_TIMEOUT_MILLIS = 2000;
 
     private static final WireMockServer WIRE_MOCK = new WireMockServer(options().dynamicPort());
 
@@ -61,7 +62,7 @@ class MemberClientAdapterWireMockTest {
     static void feignProperties(DynamicPropertyRegistry registry) {
         // url을 주면 Eureka·로드밸런서 없이 WireMock으로 바로 호출한다
         registry.add("spring.cloud.openfeign.client.config.MemberClient.url", WIRE_MOCK::baseUrl);
-        registry.add("spring.cloud.openfeign.client.config.default.connect-timeout", () -> 500);
+        registry.add("spring.cloud.openfeign.client.config.default.connect-timeout", () -> 2000);
         registry.add("spring.cloud.openfeign.client.config.default.read-timeout", () -> READ_TIMEOUT_MILLIS);
     }
 
@@ -107,7 +108,7 @@ class MemberClientAdapterWireMockTest {
     void timeoutFallsBackToDefault() {
         WIRE_MOCK.stubFor(get(urlPathEqualTo("/v1/members/1"))
                 .willReturn(okJson("{\"success\":true,\"result\":{\"memberId\":1,\"nickname\":\"늦은 응답\"}}")
-                        .withFixedDelay(READ_TIMEOUT_MILLIS * 3)));
+                        .withFixedDelay(READ_TIMEOUT_MILLIS + 1000)));
 
         assertThat(memberClientAdapter.getMemberNickname(1L)).isEqualTo(MemberClientAdapter.DEFAULT_NICKNAME);
     }

@@ -1,5 +1,7 @@
 package com.traveler.gateway.filter.auth;
 
+import static com.traveler.gateway.testsupport.TestJwks.jwkSet;
+import static com.traveler.gateway.testsupport.TestJwks.publicJwk;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -14,9 +16,7 @@ import com.traveler.gateway.support.auth.JwtTokenProvider;
 import com.traveler.gateway.support.auth.TokenBlacklistValidator;
 import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Jwks;
 import java.security.KeyPair;
-import java.security.interfaces.ECPublicKey;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
@@ -43,12 +43,10 @@ class JwtAuthenticationFilterTest {
     };
 
     private static GatewayFilter createFilter() {
-        String publicJwk = Jwks.json(
-                Jwks.builder().key((ECPublicKey) KEY_PAIR.getPublic()).id(KID).build());
         TokenBlacklistValidator blacklistValidator = mock(TokenBlacklistValidator.class);
         given(blacklistValidator.checkBlacklist(anyString())).willReturn(Mono.empty());
         return new JwtAuthenticationFilter(
-                        new JwtTokenProvider("{\"keys\":[" + publicJwk + "]}"),
+                        new JwtTokenProvider(jwkSet(publicJwk(KEY_PAIR, KID))),
                         new AuthContextManager(),
                         blacklistValidator)
                 .apply(new JwtAuthenticationFilter.Config());

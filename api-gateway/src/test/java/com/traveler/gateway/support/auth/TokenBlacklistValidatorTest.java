@@ -5,24 +5,29 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
 
 import com.traveler.gateway.exception.ApiGatewayException;
 import com.traveler.gateway.exception.ApiGatewayNoStackException;
 import com.traveler.gateway.exception.code.ApiGatewayErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.QueryTimeoutException;
 import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import reactor.core.publisher.Mono;
 
+@ExtendWith(MockitoExtension.class)
 class TokenBlacklistValidatorTest {
 
-    @SuppressWarnings("unchecked")
-    private final ReactiveRedisTemplate<String, String> redisTemplate = mock(ReactiveRedisTemplate.class);
+    @Mock
+    private ReactiveRedisTemplate<String, String> redisTemplate;
 
-    private final TokenBlacklistValidator validator = new TokenBlacklistValidator(redisTemplate);
+    @InjectMocks
+    private TokenBlacklistValidator validator;
 
     @Test
     @DisplayName("블랙리스트에 없으면 통과한다")

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.traveler.post.global.exception.PostServiceException;
 import com.traveler.post.global.exception.code.PostServiceErrorCode;
+import com.traveler.post.testsupport.fixture.PostFixture;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +14,7 @@ class PostTest {
     @Test
     @DisplayName("삭제된 게시글에 댓글을 추가하면 예외가 나고 카운터가 바뀌지 않는다")
     void addCommentOnDeletedPost() {
-        Post post = Post.builder().memberId(1L).build();
+        Post post = PostFixture.post(1L);
         post.delete();
 
         assertThatThrownBy(() -> post.addComment(5))
@@ -27,7 +28,7 @@ class PostTest {
     @Test
     @DisplayName("삭제된 게시글에서 댓글을 제거하면 예외가 나고 카운터가 바뀌지 않는다")
     void removeCommentOnDeletedPost() {
-        Post post = Post.builder().memberId(1L).build();
+        Post post = PostFixture.post(1L);
         post.addComment(4);
         post.delete();
 
@@ -42,7 +43,7 @@ class PostTest {
     @Test
     @DisplayName("삭제되지 않은 게시글은 댓글 추가·제거가 카운터에 반영된다")
     void commentCountersOnActivePost() {
-        Post post = Post.builder().memberId(1L).build();
+        Post post = PostFixture.post(1L);
 
         post.addComment(5);
         post.addComment(3);

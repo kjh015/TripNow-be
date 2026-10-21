@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.matches;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -13,20 +12,43 @@ import com.traveler.post.domain.post.service.PostImageService;
 import com.traveler.post.global.exception.PostServiceException;
 import com.traveler.post.global.exception.code.PostServiceErrorCode;
 import com.traveler.post.global.s3.validation.AllowedImageContentTypeValidator;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 /** 허용 이미지 형식(D1: gif 불허)이 요청 검증 · 발급 서비스 · S3 요청 생성 세 계층에서 같게 처리되는지 확인한다. */
+@ExtendWith(MockitoExtension.class)
 class ImageTypeConsistencyTest {
 
     private final AllowedImageContentTypeValidator validator = new AllowedImageContentTypeValidator();
-    private final S3Service s3Service = mock(S3Service.class);
-    private final PostImageService postImageService = new PostImageService(s3Service, mock(PostImageMapper.class));
-    private final S3Service realS3Service = new S3Service(mock(S3Client.class), mock(S3Presigner.class));
+
+    @Mock
+    private S3Service s3Service;
+
+    @Mock
+    private PostImageMapper postImageMapper;
+
+    @Mock
+    private S3Client s3Client;
+
+    @Mock
+    private S3Presigner s3Presigner;
+
+    private PostImageService postImageService;
+    private S3Service realS3Service;
+
+    @BeforeEach
+    void setUp() {
+        postImageService = new PostImageService(s3Service, postImageMapper);
+        realS3Service = new S3Service(s3Client, s3Presigner);
+    }
 
     @Test
     @DisplayName("gif는 세 계층 모두에서 거부된다")
