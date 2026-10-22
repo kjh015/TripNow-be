@@ -23,6 +23,10 @@ spring:
     resources:
       add-mappings: true
 
+  # 리액티브 체인의 연산자마다 Reactor Context의 trace를 ThreadLocal(MDC)로 복원해 로그에 traceId가 찍히게 한다
+  reactor:
+    context-propagation: auto
+
   cloud:
     loadbalancer:
       cache:
@@ -80,6 +84,8 @@ spring:
             exposedHeaders:
               - "Authorization"
               - "Set-Cookie"
+              # 분산 추적 ID (TraceIdResponseHeaderFilter). 프론트가 보낼 수 있게 노출
+              - "X-Trace-Id"
             allowedMethods:
               - "GET"
               - "POST"

@@ -37,7 +37,10 @@ public class KafkaConfig {
 
     @Bean
     public KafkaTemplate<String, String> kafkaTemplate() {
-        return new KafkaTemplate<>(producerFactory());
+        KafkaTemplate<String, String> template = new KafkaTemplate<>(producerFactory());
+        // 발행 시 현재 trace를 traceparent 헤더로 싣는다 (빈을 직접 만들어 spring.kafka.template.observation-enabled가 적용되지 않는다)
+        template.setObservationEnabled(true);
+        return template;
     }
 
     // Consumer
@@ -52,6 +55,8 @@ public class KafkaConfig {
         ConcurrentKafkaListenerContainerFactory<String, Object> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
+        // 수신 메시지의 traceparent 헤더로 발행 측 trace를 이어 받는다 (spring.kafka.listener.observation-enabled 대신 코드로 켠다)
+        factory.getContainerProperties().setObservationEnabled(true);
         factory.setCommonErrorHandler(commonErrorHandler(kafkaTemplate()));
         Integer concurrency = kafkaProperties.getListener().getConcurrency();
         if (concurrency != null) {

@@ -1,6 +1,7 @@
 package com.traveler.search.testsupport;
 
 import org.junit.jupiter.api.Tag;
+import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.test.context.ActiveProfiles;
@@ -21,6 +22,8 @@ import org.testcontainers.utility.DockerImageName;
  * ES·Kafka 주소는 {@code @DynamicPropertySource}로 넣는다.
  */
 @Tag("integration")
+// @SpringBootTest는 기본으로 tracing을 끈다. trace 헤더가 Kafka로 전파되게 다시 켠다(메트릭은 끔)
+@AutoConfigureObservability(metrics = false)
 @SpringBootTest
 @ActiveProfiles("test")
 public abstract class IntegrationTestSupport {

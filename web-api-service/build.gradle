@@ -66,6 +66,8 @@ dependencies {
     // OpenFeign
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
     implementation 'io.github.openfeign:feign-hc5'
+    // Feign 호출에 observation을 걸어 trace 헤더(traceparent)를 하위 서비스로 전달
+    implementation 'io.github.openfeign:feign-micrometer'
 
     // Security
     implementation 'org.springframework.boot:spring-boot-starter-security'

@@ -7,20 +7,28 @@ import static org.awaitility.Awaitility.await;
 import com.traveler.search.domain.post.document.PostDocument;
 import com.traveler.search.domain.post.repository.PostDocumentRepository;
 import com.traveler.search.testsupport.IntegrationTestSupport;
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
+import io.micrometer.tracing.Tracer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.kafka.core.KafkaTemplate;
 
 /**
  * post-service Outbox가 발행하는 형식(키 = postId, event-type·event-id 헤더, PostMessage JSON) 그대로
  * Kafka에 넣었을 때 ES 문서까지 반영되는지 확인한다. 발행 쪽 형식은 post-service의 OutboxKafkaIntegrationTest가 검증한다.
  */
+@ExtendWith(OutputCaptureExtension.class)
 class PostSearchMessageConsumerIntegrationTest extends IntegrationTestSupport {
 
     private static final Duration TIMEOUT = Duration.ofSeconds(30);
@@ -30,6 +38,12 @@ class PostSearchMessageConsumerIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private PostDocumentRepository postDocumentRepository;
+
+    @Autowired
+    private ObservationRegistry observationRegistry;
+
+    @Autowired
+    private Tracer tracer;
 
     @Value("${app.kafka.topics.post-events}")
     private String topic;
@@ -67,6 +81,30 @@ class PostSearchMessageConsumerIntegrationTest extends IntegrationTestSupport {
                 .get()
                 .extracting(PostDocument::getTitle)
                 .isEqualTo("헤더 있음"));
+    }
+
+    @Test
+    @DisplayName("발행 측 trace 안에서 보낸 메시지를 처리하는 컨슈머 로그에 같은 traceId가 찍힌다")
+    void consumerLogContinuesProducerTrace(CapturedOutput output) {
+        long postId = nextId();
+        AtomicReference<String> traceId = new AtomicReference<>();
+
+        // post-service가 게시글 작성 요청 trace 안에서 발행하는 상황. KafkaTemplate이 traceparent 헤더를 싣는다
+        Observation.createNotStarted("http.server.requests", observationRegistry)
+                .observe(() -> {
+                    traceId.set(tracer.currentSpan().context().traceId());
+                    try {
+                        // 처리 결과 대신 로그를 남기는 경로(지원하지 않는 타입의 WARN)로 컨슈머 로그를 확인한다
+                        send(postId, "TRACE_CHECK", UUID.randomUUID().toString(), createdPayload(postId, "추적"));
+                    } catch (Exception e) {
+                        throw new IllegalStateException(e);
+                    }
+                });
+
+        await().atMost(TIMEOUT)
+                .untilAsserted(() -> assertThat(output.getOut().lines()).anySatisfy(line -> assertThat(line)
+                        .contains("지원하지 않는 이벤트 타입입니다: TRACE_CHECK")
+                        .contains("[" + traceId.get() + ",")));
     }
 
     private void send(long postId, String eventType, String eventId, String payload) throws Exception {
