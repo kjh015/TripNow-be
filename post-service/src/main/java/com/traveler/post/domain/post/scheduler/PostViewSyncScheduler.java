@@ -2,22 +2,33 @@ package com.traveler.post.domain.post.scheduler;
 
 import com.traveler.post.domain.post.repository.PostViewRepository;
 import com.traveler.post.domain.post.service.PostService;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
 import java.util.Map;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class PostViewSyncScheduler {
 
     private static final Duration FLUSH_LOCK_TTL = Duration.ofSeconds(30);
 
     private final PostViewRepository postViewRepository;
     private final PostService postService;
+    // 조회수를 DB에 동기화한 게시글 수 (post_view_sync_posts_total).
+    private final Counter syncedPostsCounter;
+
+    public PostViewSyncScheduler(
+            PostViewRepository postViewRepository, PostService postService, MeterRegistry meterRegistry) {
+        this.postViewRepository = postViewRepository;
+        this.postService = postService;
+        this.syncedPostsCounter = Counter.builder("post.view.sync.posts")
+                .description("조회수를 DB에 동기화한 게시글 수")
+                .register(meterRegistry);
+    }
 
     // 5초(5,000ms)마다 실행
     @Scheduled(fixedDelay = 5000)
@@ -39,6 +50,7 @@ public class PostViewSyncScheduler {
 
             // DB 및 Outbox 동기화 위임
             postService.flushViewCountsToDB(viewCountMap);
+            syncedPostsCounter.increment(viewCountMap.size());
 
             log.debug("[ViewCount] {}개의 게시글 조회수가 DB에 동기화되었습니다.", viewCountMap.size());
 

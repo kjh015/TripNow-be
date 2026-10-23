@@ -1,5 +1,6 @@
 package com.traveler.post.domain.post.scheduler;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
@@ -9,11 +10,12 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.traveler.post.domain.post.repository.PostViewRepository;
 import com.traveler.post.domain.post.service.PostService;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.Map;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -28,8 +30,15 @@ class PostViewSyncSchedulerTest {
     @Mock
     private PostService postService;
 
-    @InjectMocks
+    private SimpleMeterRegistry meterRegistry;
+
     private PostViewSyncScheduler scheduler;
+
+    @BeforeEach
+    void setUp() {
+        meterRegistry = new SimpleMeterRegistry();
+        scheduler = new PostViewSyncScheduler(postViewRepository, postService, meterRegistry);
+    }
 
     @Test
     @DisplayName("락을 얻지 못하면 버퍼를 건드리지 않고 건너뛴다")
@@ -68,6 +77,7 @@ class PostViewSyncSchedulerTest {
         verify(postService).flushViewCountsToDB(counts);
         verify(postViewRepository).deleteProcessingBuffer();
         verify(postViewRepository).releaseFlushLock(LOCK_TOKEN);
+        assertThat(syncedPosts()).isEqualTo(1.0);
     }
 
     @Test
@@ -83,5 +93,10 @@ class PostViewSyncSchedulerTest {
 
         verify(postViewRepository, never()).deleteProcessingBuffer();
         verify(postViewRepository).releaseFlushLock(LOCK_TOKEN);
+        assertThat(syncedPosts()).isZero();
+    }
+
+    private double syncedPosts() {
+        return meterRegistry.get("post.view.sync.posts").counter().count();
     }
 }

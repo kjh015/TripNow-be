@@ -34,6 +34,7 @@ dependencies {
     // Common Module
     implementation project(':common:api')
     implementation project(':common:support:logging')
+    implementation project(':common:support:monitoring')
 
     // Web & Lombok
     implementation 'org.springframework.boot:spring-boot-starter-web'
@@ -72,9 +73,6 @@ dependencies {
     // Security
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
-
-    // Actuator (ECS 컨테이너 헬스체크: /actuator/health/liveness)
-    implementation 'org.springframework.boot:spring-boot-starter-actuator'
 }
 
 dependencyManagement {

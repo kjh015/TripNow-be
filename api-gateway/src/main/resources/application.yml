@@ -10,6 +10,8 @@ spring:
       - optional:file:api-gateway/.env[.properties]
       # 공통 로깅 설정 (common/support/logging)
       - classpath:logging.yml
+      # 공통 모니터링 설정 (common/support/monitoring)
+      - classpath:monitoring.yml
 
   data:
     redis:
@@ -114,17 +116,6 @@ app:
   jwt:
     # 공개 JWK Set({"keys":[...]}). 토큰 헤더의 kid로 검증 키를 고른다
     public-jwks: ${JWT_PUBLIC_JWKS}
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health
-  endpoint:
-    health:
-      probes:
-        enabled: true
-      show-details: never
 
 # Swagger는 기본으로 끄고 local 프로필에서만 켠다
 springdoc:

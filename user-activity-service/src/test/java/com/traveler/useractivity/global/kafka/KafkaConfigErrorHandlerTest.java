@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 
 import com.traveler.useractivity.global.exception.UserActivityServiceException;
 import com.traveler.useractivity.global.exception.code.UserActivityServiceErrorCode;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -49,8 +50,8 @@ class KafkaConfigErrorHandlerTest {
         given(kafkaTemplate.send(any(ProducerRecord.class)))
                 .willReturn(CompletableFuture.completedFuture(mock(SendResult.class)));
 
-        KafkaConfig kafkaConfig =
-                new KafkaConfig(new KafkaProperties(), mock(SslBundles.class), new KafkaExceptionHandler());
+        KafkaConfig kafkaConfig = new KafkaConfig(
+                new KafkaProperties(), mock(SslBundles.class), new KafkaExceptionHandler(), new SimpleMeterRegistry());
         errorHandler = kafkaConfig.commonErrorHandler(kafkaTemplate);
         consumer = mock(Consumer.class);
         container = mock(MessageListenerContainer.class);

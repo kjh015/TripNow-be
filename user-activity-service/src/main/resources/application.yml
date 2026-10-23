@@ -11,6 +11,8 @@ spring:
       - optional:file:user-activity-service/.env[.properties]
       # 공통 로깅 설정 (common/support/logging)
       - classpath:logging.yml
+      # 공통 모니터링 설정 (common/support/monitoring)
+      - classpath:monitoring.yml
 
   elasticsearch:
     # 값 형식은 "호스트:포트" (스킴 없음). ElasticsearchConfig의
@@ -98,18 +100,6 @@ springdoc:
   swagger-ui:
     enabled: false
     path: /swagger-ui.html
-
-# ECS 컨테이너 헬스체크용. liveness는 DB·Redis·ES 상태를 합산하지 않아 외부 의존 장애로 연쇄 재시작되지 않는다
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health
-  endpoint:
-    health:
-      probes:
-        enabled: true
-      show-details: never
 
 eureka:
   instance:

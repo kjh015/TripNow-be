@@ -1,5 +1,6 @@
 package com.traveler.useractivity.global.kafka;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -25,6 +26,7 @@ public class KafkaConfig {
     private final KafkaProperties kafkaProperties;
     private final SslBundles sslBundles;
     private final KafkaExceptionHandler kafkaExceptionHandler;
+    private final MeterRegistry meterRegistry;
 
     private static final FixedBackOff NO_RETRY = new FixedBackOff(0L, 0L);
 
@@ -32,13 +34,16 @@ public class KafkaConfig {
     @Bean
     public ProducerFactory<String, String> producerFactory() {
         Map<String, Object> nodes = kafkaProperties.buildProducerProperties(sslBundles);
-        return new DefaultKafkaProducerFactory<>(nodes);
+        DefaultKafkaProducerFactory<String, String> factory = new DefaultKafkaProducerFactory<>(nodes);
+        // 프로듀서 클라이언트 지표(kafka_producer_*)를 등록한다. 직접 생성한 빈에는 Boot의 지표 자동 설정이 적용되지 않는다.
+        factory.addListener(new MicrometerProducerListener<>(meterRegistry));
+        return factory;
     }
 
     @Bean
     public KafkaTemplate<String, String> kafkaTemplate() {
         KafkaTemplate<String, String> template = new KafkaTemplate<>(producerFactory());
-        // 발행 시 현재 trace를 traceparent 헤더로 싣는다 (빈을 직접 만들어 spring.kafka.template.observation-enabled가 적용되지 않는다)
+        // 발행 시 현재 trace 정보를 traceparent 헤더에 포함한다. 직접 생성한 빈에는 spring.kafka.template.observation-enabled 설정이 적용되지 않는다.
         template.setObservationEnabled(true);
         return template;
     }
@@ -47,7 +52,10 @@ public class KafkaConfig {
     @Bean
     public ConsumerFactory<String, Object> consumerFactory() {
         Map<String, Object> nodes = kafkaProperties.buildConsumerProperties(sslBundles);
-        return new DefaultKafkaConsumerFactory<>(nodes);
+        DefaultKafkaConsumerFactory<String, Object> factory = new DefaultKafkaConsumerFactory<>(nodes);
+        // 컨슈머 클라이언트 지표(kafka_consumer_*, 파티션별 lag 포함)를 등록한다. 직접 생성한 빈에는 Boot의 지표 자동 설정이 적용되지 않는다.
+        factory.addListener(new MicrometerConsumerListener<>(meterRegistry));
+        return factory;
     }
 
     @Bean
@@ -55,7 +63,7 @@ public class KafkaConfig {
         ConcurrentKafkaListenerContainerFactory<String, Object> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
-        // 수신 메시지의 traceparent 헤더로 발행 측 trace를 이어 받는다 (spring.kafka.listener.observation-enabled 대신 코드로 켠다)
+        // 수신 메시지의 traceparent 헤더를 통해 발행 측 trace를 이어 간다. spring.kafka.listener.observation-enabled 대신 코드로 활성화한다.
         factory.getContainerProperties().setObservationEnabled(true);
         factory.setCommonErrorHandler(commonErrorHandler(kafkaTemplate()));
         Integer concurrency = kafkaProperties.getListener().getConcurrency();

@@ -1,0 +1,31 @@
+plugins {
+    id 'java-library'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.boot:spring-boot-dependencies:3.4.5"
+    }
+}
+
+group = 'com.traveler.common'
+version = '0.0.1-SNAPSHOT'
+description = 'monitoring'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // actuator 엔드포인트(health, prometheus)와 Micrometer API(커스텀 지표용 MeterRegistry)
+    api 'org.springframework.boot:spring-boot-starter-actuator'
+    // /actuator/prometheus 노출
+    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+}
