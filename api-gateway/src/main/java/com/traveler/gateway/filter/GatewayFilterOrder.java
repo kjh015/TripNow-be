@@ -10,6 +10,7 @@ import org.springframework.core.Ordered;
  * 요청 흐름
  *   INTERNAL_HEADER_STRIP   위조 내부 헤더 제거
  *   ACCESS_LOG              접근 로그 (응답 커밋 직전에 기록)
+ *   TRACE_ID_RESPONSE_HEADER  응답 헤더 X-Trace-Id
  *   라우트 필터              JwtAuthenticationFilter → RoleAuthorizationFilter
  *                           (application.yml routes[].filters 나열 순서대로 1, 2 ... 순서를 받는다)
  *   Spring Cloud Gateway 기본 필터
@@ -24,6 +25,9 @@ public final class GatewayFilterOrder {
 
     /** 접근 로그. 지연 시간에 게이트웨이 처리 전체(인증, 라우팅, 하위 호출)가 들어가도록 최대한 앞에서 */
     public static final int ACCESS_LOG = INTERNAL_HEADER_STRIP + 1;
+
+    /** 응답 헤더 X-Trace-Id. 라우트 필터(인증 실패 응답)보다 먼저 넣어야 에러 응답에도 남는다 */
+    public static final int TRACE_ID_RESPONSE_HEADER = ACCESS_LOG + 1;
 
     private GatewayFilterOrder() {
         throw new UnsupportedOperationException("Utility class cannot be instantiated");

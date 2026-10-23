@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.fasterxml.jackson.core.JsonParseException;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
@@ -42,7 +43,8 @@ class KafkaConfigTest {
 
     @BeforeEach
     void setUp() {
-        KafkaConfig config = new KafkaConfig(new KafkaProperties(), mock(SslBundles.class), kafkaExceptionHandler);
+        KafkaConfig config = new KafkaConfig(
+                new KafkaProperties(), mock(SslBundles.class), kafkaExceptionHandler, new SimpleMeterRegistry());
         errorHandler = config.commonErrorHandler(kafkaTemplate);
 
         given(kafkaTemplate.send(any(ProducerRecord.class))).willAnswer(invocation -> {

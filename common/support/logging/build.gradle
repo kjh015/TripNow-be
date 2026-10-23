@@ -24,13 +24,20 @@ repositories {
 }
 
 dependencies {
-    // 로깅 API (구현체 logback은 각 서비스의 spring-boot-starter가 가져온다)
+    // 로깅 API
     api 'org.slf4j:slf4j-api'
+
+    // 분산 추적: traceId·spanId를 MDC에 넣고 HTTP·Kafka 헤더로 전파
+    api 'io.micrometer:micrometer-tracing-bridge-brave'
+    // 비동기 스레드로 컨텍스트(trace, MDC userId) 전파
+    api 'io.micrometer:context-propagation'
 
     // AutoConfiguration 등록
     implementation 'org.springframework.boot:spring-boot-autoconfigure'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    // 추적 자동 설정(Observation·Brave)을 실제로 띄워 로그 상관관계를 확인
+    testImplementation 'org.springframework.boot:spring-boot-starter-actuator'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 

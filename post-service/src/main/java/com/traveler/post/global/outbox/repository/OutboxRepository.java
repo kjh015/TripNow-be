@@ -1,6 +1,7 @@
 package com.traveler.post.global.outbox.repository;
 
 import com.traveler.post.global.outbox.entity.Outbox;
+import com.traveler.post.global.outbox.enums.OutboxStatus;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.QueryHint;
 import java.time.Instant;
@@ -12,6 +13,9 @@ import org.springframework.data.jpa.repository.*;
 
 public interface OutboxRepository extends JpaRepository<Outbox, Long> {
     Optional<Outbox> findByEventId(String eventId);
+
+    // 상태별 건수 (OutboxMetrics 게이지)
+    long countByStatus(OutboxStatus status);
 
     // 1. INIT 상태로 생성된지 5분이 지났거나, 2. FAILED 상태인 데이터를 조회
     @Lock(LockModeType.PESSIMISTIC_WRITE)

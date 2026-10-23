@@ -7,6 +7,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.support.ContextPropagatingTaskDecorator;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
@@ -25,6 +26,8 @@ public class AsyncConfig {
                 "SseExecutor",
                 new ThreadPoolExecutor.AbortPolicy(),
                 () -> "activeEmitters=" + rankingService.getObject().getActiveEmitterCount()));
+        // 작업을 넘긴 스레드의 trace와 MDC userId를 작업 스레드로 옮긴다
+        executor.setTaskDecorator(new ContextPropagatingTaskDecorator());
         executor.initialize();
         return executor;
     }

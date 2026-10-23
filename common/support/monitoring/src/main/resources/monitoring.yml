@@ -1,0 +1,30 @@
+# 서비스 공통 모니터링(actuator·메트릭) 설정. 각 서비스 application.yml의 spring.config.import로 가져온다.
+# import된 파일의 값은 가져온 application.yml보다 우선하므로, 서비스마다 달라야 하는 값은 여기에 두지 않는다.
+# (프로필 파일 application-{profile}.yml은 이 파일보다 우선한다)
+management:
+  endpoints:
+    web:
+      exposure:
+        # prometheus: 부하테스트 환경의 Prometheus가 스크랩한다.
+        include: health,prometheus
+  endpoint:
+    health:
+      # ECS 컨테이너 헬스체크: /actuator/health/liveness.
+      # liveness는 DB·Redis·ES 같은 외부 의존 상태를 합산하지 않아 외부 의존 장애로 연쇄 재시작되지 않는다
+      probes:
+        enabled: true
+      show-details: never
+  metrics:
+    tags:
+      # 모든 지표에 서비스 이름을 붙인다 (Grafana JVM 대시보드의 application 변수)
+      application: ${spring.application.name}
+    distribution:
+      # 응답 시간 분포를 버킷으로 내보내 Prometheus에서 p95·p99를 계산한다
+      percentiles-histogram:
+        http.server.requests: true
+
+server:
+  tomcat:
+    mbeanregistry:
+      # 톰캣 스레드 지표(tomcat_threads_busy_threads 등). Netty를 쓰는 게이트웨이에는 해당 없다
+      enabled: true

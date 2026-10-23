@@ -11,6 +11,8 @@ spring:
       - optional:file:user-activity-service/.env[.properties]
       # 공통 로깅 설정 (common/support/logging)
       - classpath:logging.yml
+      # 공통 모니터링 설정 (common/support/monitoring)
+      - classpath:monitoring.yml
 
   elasticsearch:
     # 값 형식은 "호스트:포트" (스킴 없음). ElasticsearchConfig의
@@ -75,7 +77,8 @@ spring:
 logging:
   pattern:
     # PID/앱이름을 걷어내고, 반복되는 식별자는 MDC 컬럼(trace/event/ref)으로 분리
-    console: "%clr(%d{HH:mm:ss.SSS}){faint} %clr(%-5p) %clr(%-8.8X{trace:-}){faint} %clr(%-22.22X{event:-}){magenta} %clr(%-18.18X{ref:-}){cyan} %clr(%-16.16logger{0}){faint} %clr(:){faint} %m%n%wEx"
+    # trace는 파이프라인의 로그 추적 ID, traceId는 분산 추적 ID(Kafka 수신 span)로 서로 다른 값이다
+    console: "%clr(%d{HH:mm:ss.SSS}){faint} %clr(%-5p) %clr(%-32.32X{traceId:-}){faint} %clr(%-8.8X{trace:-}){faint} %clr(%-22.22X{event:-}){magenta} %clr(%-18.18X{ref:-}){cyan} %clr(%-16.16logger{0}){faint} %clr(:){faint} %m%n%wEx"
   level:
     # 파이프라인 단계별 상세(수신 로그, 원본 path 등)가 필요하면 DEBUG로 변경
     com.traveler.useractivity.domain.process: INFO
@@ -97,18 +100,6 @@ springdoc:
   swagger-ui:
     enabled: false
     path: /swagger-ui.html
-
-# ECS 컨테이너 헬스체크용. liveness는 DB·Redis·ES 상태를 합산하지 않아 외부 의존 장애로 연쇄 재시작되지 않는다
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health
-  endpoint:
-    health:
-      probes:
-        enabled: true
-      show-details: never
 
 eureka:
   instance:

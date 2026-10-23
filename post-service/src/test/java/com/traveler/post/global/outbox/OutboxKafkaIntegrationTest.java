@@ -15,12 +15,16 @@ import com.traveler.post.global.outbox.entity.Outbox;
 import com.traveler.post.global.outbox.enums.OutboxStatus;
 import com.traveler.post.global.outbox.repository.OutboxRepository;
 import com.traveler.post.testsupport.IntegrationTestSupport;
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
+import io.micrometer.tracing.Tracer;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -48,6 +52,12 @@ class OutboxKafkaIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private ObservationRegistry observationRegistry;
+
+    @Autowired
+    private Tracer tracer;
 
     @Value("${app.kafka.topics.post-events}")
     private String topic;
@@ -85,6 +95,35 @@ class OutboxKafkaIntegrationTest extends IntegrationTestSupport {
         assertThat(payload.get("address").asText()).isEqualTo("경상북도 경주시");
         assertThat(payload.get("createdAt").isTextual()).isTrue();
         assertThat(payload.get("images").isArray()).isTrue();
+    }
+
+    @Test
+    @DisplayName("게시글 작성 요청의 trace가 커밋 후 비동기 발행(outboxTaskExecutor)까지 이어져 같은 traceId의 traceparent 헤더가 실린다")
+    void publishedEventCarriesRequestTraceId() {
+        AtomicReference<String> traceId = new AtomicReference<>();
+        AtomicReference<Long> postId = new AtomicReference<>();
+
+        // 서블릿 요청 observation이 열려 있는 상황. 커밋 후 리스너(@Async)는 이 안에서 작업을 넘긴다
+        Observation.createNotStarted("http.server.requests", observationRegistry)
+                .observe(() -> {
+                    traceId.set(tracer.currentSpan().context().traceId());
+                    postId.set(postService
+                            .createPost(
+                                    7L,
+                                    new PostRequest.CreateDTO(
+                                            "추적 게시글",
+                                            "본문",
+                                            "황리단길",
+                                            "경상북도 경주시",
+                                            Category.FOOD,
+                                            Region.GYEONGGI,
+                                            List.of()))
+                            .postId());
+                });
+
+        ConsumerRecord<String, String> record = pollRecordWithKey(String.valueOf(postId.get()));
+
+        assertThat(header(record, "traceparent")).matches("00-" + traceId.get() + "-[0-9a-f]{16}-0[01]");
     }
 
     private Outbox findOutbox(Long postId) {
