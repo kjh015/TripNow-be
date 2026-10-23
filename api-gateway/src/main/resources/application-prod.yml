@@ -7,7 +7,6 @@ spring:
     gateway:
       httpclient:
         connect-timeout: 2000 # 빠른 연결 실패 유도
-        response-timeout: 3s
       globalcors:
         cors-configurations:
           '[/**]':
