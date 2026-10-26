@@ -13,7 +13,9 @@ import com.github.tomakehurst.wiremock.http.Fault;
 import com.traveler.web.domain.member.client.MemberClient;
 import com.traveler.web.global.exception.WebApiServiceException;
 import com.traveler.web.global.exception.code.WebApiServiceErrorCode;
+import com.traveler.web.global.resilience.DownstreamCallExecutor;
 import feign.codec.DecodeException;
+import io.github.resilience4j.springboot3.circuitbreaker.autoconfigure.CircuitBreakerAutoConfiguration;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.AfterAll;
@@ -34,7 +36,8 @@ import org.springframework.test.context.DynamicPropertySource;
 
 /**
  * 실제 Feign 스택(FeignClientConfig의 디코더·에러 디코더, 타임아웃)을 거쳐 member-service 응답이
- * 어떤 예외·닉네임으로 바뀌는지 WireMock으로 확인한다. Docker가 필요 없어 단위 테스트(test)에서 돈다.
+ * 어떤 예외·닉네임으로 바뀌는지 WireMock으로 확인한다. 서킷 브레이커도 yml 설정으로 붙지만,
+ * 이 클래스 전체의 호출 수가 최소 호출 수(10번)보다 적어 열리지 않는다(서킷 동작은 DownstreamCircuitBreakerWireMockTest). Docker가 필요 없어 단위 테스트(test)에서 돈다.
  */
 @SpringBootTest(classes = MemberClientAdapterWireMockTest.FeignTestConfig.class)
 class MemberClientAdapterWireMockTest {
@@ -52,10 +55,11 @@ class MemberClientAdapterWireMockTest {
     @ImportAutoConfiguration({
         JacksonAutoConfiguration.class,
         HttpMessageConvertersAutoConfiguration.class,
-        FeignAutoConfiguration.class
+        FeignAutoConfiguration.class,
+        CircuitBreakerAutoConfiguration.class
     })
     @EnableFeignClients(clients = MemberClient.class)
-    @Import(MemberClientAdapter.class)
+    @Import({MemberClientAdapter.class, DownstreamCallExecutor.class})
     static class FeignTestConfig {}
 
     @DynamicPropertySource

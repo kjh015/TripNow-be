@@ -4,6 +4,8 @@ import com.traveler.common.core.response.PageResponse;
 import com.traveler.web.domain.search.client.PostSearchClient;
 import com.traveler.web.domain.search.client.dto.response.PostSearchClientResponse;
 import com.traveler.web.domain.search.dto.request.PostSearchRequest;
+import com.traveler.web.global.resilience.DownstreamCallExecutor;
+import com.traveler.web.global.resilience.DownstreamServiceNames;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
@@ -12,9 +14,10 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class PostSearchClientAdapter {
     private final PostSearchClient postSearchClient;
+    private final DownstreamCallExecutor downstreamCallExecutor;
 
     public PageResponse<PostSearchClientResponse.SearchDTO> search(PostSearchRequest.SearchDTO dto) {
-        return postSearchClient
+        return downstreamCallExecutor.execute(DownstreamServiceNames.SEARCH, () -> postSearchClient
                 .search(
                         dto.keyword(),
                         dto.category(),
@@ -23,18 +26,24 @@ public class PostSearchClientAdapter {
                         dto.direction(),
                         dto.page(),
                         dto.size())
-                .result();
+                .result());
     }
 
     public PostSearchClientResponse.DetailDTO getPost(Long postId) {
-        return postSearchClient.getPost(postId).result();
+        return downstreamCallExecutor.execute(
+                DownstreamServiceNames.SEARCH,
+                () -> postSearchClient.getPost(postId).result());
     }
 
     public PostSearchClientResponse.AutocompleteDTO autocomplete(String keyword) {
-        return postSearchClient.autocomplete(keyword).result();
+        return downstreamCallExecutor.execute(
+                DownstreamServiceNames.SEARCH,
+                () -> postSearchClient.autocomplete(keyword).result());
     }
 
     public PageResponse<PostSearchClientResponse.MyDTO> getMyPosts(Pageable pageable) {
-        return postSearchClient.getMyPosts(pageable).result();
+        return downstreamCallExecutor.execute(
+                DownstreamServiceNames.SEARCH,
+                () -> postSearchClient.getMyPosts(pageable).result());
     }
 }

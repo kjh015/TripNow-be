@@ -11,6 +11,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.traveler.web.domain.member.adapter.MemberClientAdapter;
 import com.traveler.web.domain.member.client.MemberClient;
+import com.traveler.web.global.resilience.DownstreamCallExecutor;
+import io.github.resilience4j.springboot3.circuitbreaker.autoconfigure.CircuitBreakerAutoConfiguration;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import io.micrometer.tracing.Tracer;
@@ -58,10 +60,11 @@ class FeignTracingPropagationTest {
         ObservationAutoConfiguration.class,
         MicrometerTracingAutoConfiguration.class,
         BraveAutoConfiguration.class,
-        FeignAutoConfiguration.class
+        FeignAutoConfiguration.class,
+        CircuitBreakerAutoConfiguration.class
     })
     @EnableFeignClients(clients = MemberClient.class)
-    @Import(MemberClientAdapter.class)
+    @Import({MemberClientAdapter.class, DownstreamCallExecutor.class})
     static class FeignTracingTestConfig {}
 
     @DynamicPropertySource
