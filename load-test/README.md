@@ -152,7 +152,8 @@ curl.exe "http://localhost:9200/posts/_count"
 
 같은 VPC의 별도 EC2에서 실행하고, `MODE=ramp`로 초당 요청 수를 올리며 p95·에러율 기준이 깨지는 지점을 찾는다.
 운영 DB·ES에 시드 데이터가 쌓이므로 계정 prefix를 따로 두고 측정 뒤 정리한다.
+EC2에도 "준비"와 같이 k6 Docker 이미지와 `load-test/.env`를 두고, 저장소 루트에서 실행한다.
 
 ```bash
-k6 run -e ALLOW_NON_LOCAL=true -e BASE_URL=<대상 주소> -e MODE=ramp -e MAX_RATE=200 scenarios/search-read.js
+docker run --rm -i --env-file load-test/.env -v "${PWD}/load-test:/load-test" -w /load-test grafana/k6:1.3.0 run -e ALLOW_NON_LOCAL=true -e BASE_URL=<대상 주소> -e MODE=ramp -e MAX_RATE=200 scenarios/search-read.js
 ```

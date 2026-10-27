@@ -153,7 +153,7 @@ app:
   rate-limit:
     enabled: true
     policies:
-      # 회원가입: IP당 분당 10회 (초당 1토큰 ÷ 6 = 10초에 1건, 처음 10건은 바로 허용)
+      # 회원가입: IP당 분당 10회 (초당 1토큰 ÷ 6 = 6초에 1건, 처음 10건은 바로 허용)
       signup:
         key: ip
         replenish-rate: 1

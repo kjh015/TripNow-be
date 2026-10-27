@@ -1,6 +1,7 @@
 package com.traveler.gateway.config;
 
 import java.util.Map;
+import java.util.Objects;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -22,7 +23,20 @@ public record RateLimitProperties(boolean enabled, Map<String, Policy> policies)
      * @param burstCapacity 버킷 크기
      * @param requestedTokens 요청 1건이 쓰는 토큰 수
      */
-    public record Policy(KeyType key, int replenishRate, int burstCapacity, int requestedTokens) {}
+    public record Policy(KeyType key, int replenishRate, int burstCapacity, int requestedTokens) {
+
+        /** 잘못된 값이면 바인딩에서 실패시켜 게이트웨이가 기동하지 않게 한다 (필터 생성 때 실패하면 그 라우트만 빠진 채 기동된다) */
+        public Policy {
+            Objects.requireNonNull(key, "app.rate-limit.policies.*.key는 필수다");
+            if (replenishRate < 1 || burstCapacity < 1 || requestedTokens < 1) {
+                throw new IllegalArgumentException("replenish-rate, burst-capacity, requested-tokens는 1 이상이어야 한다");
+            }
+            // 버킷의 토큰은 burst-capacity를 넘지 않으므로 요청 1건이 쓰는 토큰이 더 크면 모든 요청이 거절된다
+            if (requestedTokens > burstCapacity) {
+                throw new IllegalArgumentException("requested-tokens는 burst-capacity를 넘을 수 없다");
+            }
+        }
+    }
 
     public enum KeyType {
         /** 클라이언트 IP (ipKeyResolver) */

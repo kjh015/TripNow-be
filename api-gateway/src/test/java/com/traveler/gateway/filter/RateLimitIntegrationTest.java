@@ -82,7 +82,7 @@ class RateLimitIntegrationTest extends RateLimitTestSupport {
     }
 
     @Test
-    @DisplayName("local 외 환경은 빈 키를 막는다(deny-empty-key 기본값 true)")
+    @DisplayName("빈 키는 막는다(deny-empty-key 기본값 true)")
     void deniesEmptyKeyByDefault() {
         assertThat(rateLimiterFilterFactory.isDenyEmptyKey()).isTrue();
     }

@@ -30,8 +30,8 @@ class RateLimitLocalProfileIntegrationTest extends RateLimitTestSupport {
     }
 
     @Test
-    @DisplayName("빈 키를 통과시키는 설정은 local 프로필에서만 켜진다")
-    void allowsEmptyKeyOnlyInLocal() {
-        assertThat(rateLimiterFilterFactory.isDenyEmptyKey()).isFalse();
+    @DisplayName("끄는 데 빈 키 설정을 쓰지 않는다 (local도 deny-empty-key 기본값 true)")
+    void keepsDenyEmptyKeyDefault() {
+        assertThat(rateLimiterFilterFactory.isDenyEmptyKey()).isTrue();
     }
 }

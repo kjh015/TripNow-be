@@ -153,7 +153,9 @@ $ErrorActionPreference = 'Continue'
 if ($memberPid) {
     # hang: k6 시작 5초 뒤(준비 단계가 끝난 뒤) member-service를 멈추고, 끝나면 반드시 재개한다
     $suspendTool = Join-Path $root 'tools/suspend-process.ps1'
-    $k6 = Start-Process -FilePath 'docker' -ArgumentList $dockerArgs -NoNewWindow -PassThru
+    # Start-Process는 인자를 공백으로 이어 붙이기만 하므로, 공백이 있는 인자(경로, -Vars 값)는 따옴표로 감싸 한 인자로 넘긴다
+    $procArgs = $dockerArgs | ForEach-Object { if ($_ -match '\s') { "`"$_`"" } else { $_ } }
+    $k6 = Start-Process -FilePath 'docker' -ArgumentList $procArgs -NoNewWindow -PassThru
     # 핸들을 미리 잡아 두지 않으면 끝난 뒤 ExitCode가 비는 경우가 있다
     $null = $k6.Handle
     $suspended = $false

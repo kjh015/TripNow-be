@@ -3,14 +3,6 @@ spring:
     activate:
       on-profile: local
 
-  # 로컬에서는 Rate Limiting을 끈다. 부하테스트(k6)와 시드가 IP 하나에서 요청을 몰아 보내기 때문.
-  # 꺼지면 KeyResolver가 빈 키를 돌려주고, 빈 키를 Redis 조회 없이 통과시킨다 (다른 환경은 기본값 true = 403)
-  cloud:
-    gateway:
-      filter:
-        request-rate-limiter:
-          deny-empty-key: false
-
 springdoc:
   api-docs:
     enabled: true
@@ -31,5 +23,7 @@ springdoc:
 
 app:
   rate-limit:
+    # 로컬에서는 Rate Limiting을 끈다. 부하테스트(k6)와 시드가 IP 하나에서 요청을 몰아 보내기 때문.
+    # 꺼지면 RateLimitFilter가 Redis를 부르지 않고 그대로 통과시킨다
     # 로컬에서 429를 확인하려면 APP_RATE_LIMIT_ENABLED=true로 띄워야 한다
     enabled: false

@@ -65,6 +65,10 @@ public class RateLimitFilter extends AbstractGatewayFilterFactory<RateLimitFilte
             throw new IllegalArgumentException("Rate limit 정책이 없다: " + config.getPolicy()
                     + " (app.rate-limit.policies: " + properties.policies().keySet() + ")");
         }
+        // 꺼져 있으면(local 프로필) Redis를 부르지 않고 그대로 통과시킨다. 정책 이름 확인은 꺼져 있어도 한다
+        if (!properties.enabled()) {
+            return (exchange, chain) -> chain.filter(exchange);
+        }
         return requestRateLimiter.apply(new RequestRateLimiterGatewayFilterFactory.Config()
                 .setRateLimiter(rateLimiterOf(config.getPolicy(), policy))
                 .setKeyResolver(keyResolverOf(policy)));
