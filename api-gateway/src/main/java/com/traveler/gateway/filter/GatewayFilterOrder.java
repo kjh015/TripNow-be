@@ -11,7 +11,7 @@ import org.springframework.core.Ordered;
  *   INTERNAL_HEADER_STRIP   위조 내부 헤더 제거
  *   ACCESS_LOG              접근 로그 (응답 커밋 직전에 기록)
  *   TRACE_ID_RESPONSE_HEADER  응답 헤더 X-Trace-Id
- *   라우트 필터              JwtAuthenticationFilter → RoleAuthorizationFilter
+ *   라우트 필터              JwtAuthenticationFilter → RoleAuthorizationFilter / RateLimitFilter
  *                           (application.yml routes[].filters 나열 순서대로 1, 2 ... 순서를 받는다)
  *   Spring Cloud Gateway 기본 필터
  *                           (NettyWriteResponseFilter -1, RouteToRequestUrlFilter 10000,

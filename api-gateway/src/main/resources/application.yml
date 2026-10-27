@@ -36,39 +36,61 @@ spring:
         ttl: 5s
     gateway:
       routes:
-        - id: web-api-service-signup
+        # 회원가입·로그인. 버킷이 라우트 단위라 둘을 합쳐 IP당 분당 10회
+        - id: web-api-service-signup-login
           uri: lb://web-api-service
           predicates:
-            - Path=/api/v1/members
+            - Path=/api/v1/members, /api/v1/auth/login
             - Method=POST
+          filters:
+            - RateLimitFilter=login
 
         - id: web-api-service-search-me
           uri: lb://web-api-service
           predicates:
             - Path=/api/v1/search/*/me
           filters:
-            - name: JwtAuthenticationFilter
+            - JwtAuthenticationFilter
+            - RateLimitFilter=search
+
+        - id: web-api-service-search
+          uri: lb://web-api-service
+          predicates:
+            - Path=/api/v1/search/**
+          filters:
+            - RateLimitFilter=search
 
         - id: web-api-service-guest
           uri: lb://web-api-service
           predicates:
-            - Path=/api/v1/search/**, /api/v1/web-api/v3/api-docs/**, /api/v1/rankings/live,
-              /api/v1/auth/login, /api/v1/auth/tokens/refresh, /api/v1/auth/oauth2/**,
+            - Path=/api/v1/web-api/v3/api-docs/**, /api/v1/rankings/live,
+              /api/v1/auth/tokens/refresh, /api/v1/auth/oauth2/**,
               /login/oauth2/code/**, /api/v1/members/availability/**
+
+        # 게시글·댓글·좋아요 쓰기. 조회(GET)는 web-api-service-user로 간다
+        - id: web-api-service-write
+          uri: lb://web-api-service
+          predicates:
+            - Path=/api/v1/posts/**, /api/v1/comments/**, /api/v1/likes/**
+            - Method=POST, PATCH, DELETE
+          filters:
+            - JwtAuthenticationFilter
+            # 인증 필터 뒤에 둬야 사용자 기준(write 정책)으로 센다
+            - RateLimitFilter=write
 
         - id: web-api-service-user
           uri: lb://web-api-service
           predicates:
             - Path=/api/v1/posts/**, /api/v1/comments/**, /api/v1/likes/**, /api/v1/members/**, /api/v1/auth/**
           filters:
-            - name: JwtAuthenticationFilter
+            - JwtAuthenticationFilter
 
         - id: web-api-service-admin
           uri: lb://web-api-service
           predicates:
             - Path=/api/v1/admin/**
           filters:
-            - name: JwtAuthenticationFilter
+            - JwtAuthenticationFilter
             - name: RoleAuthorizationFilter
               args:
                 requiredRole: ROLE_ADMIN
@@ -116,6 +138,33 @@ app:
   jwt:
     # 공개 JWK Set({"keys":[...]}). 토큰 헤더의 kid로 검증 키를 고른다
     public-jwks: ${JWT_PUBLIC_JWKS}
+
+  # 게이트웨이 Rate Limiting 정책. 라우트에서 "- RateLimitFilter=<정책 이름>"으로 고른다 (토큰 버킷, RedisRateLimiter)
+  #   key: 횟수를 세는 기준 (ip, user = 인증된 사용자, 없으면 IP)
+  #   replenish-rate: 초당 채워지는 토큰 수, burst-capacity: 버킷 크기, requested-tokens: 요청 1건이 쓰는 토큰 수
+  #   지속 처리량 = replenish-rate / requested-tokens (초당), 한 번에 몰아 보낼 수 있는 건수 = burst-capacity / requested-tokens
+  # Redis 오류 시에는 제한 없이 통과시킨다(fail-open)
+  rate-limit:
+    enabled: true
+    policies:
+      # 로그인·회원가입: IP당 분당 10회 (초당 1토큰 ÷ 6 = 10초에 1건, 처음 10건은 바로 허용)
+      login:
+        key: ip
+        replenish-rate: 1
+        burst-capacity: 60
+        requested-tokens: 6
+      # 게시글·댓글·좋아요 쓰기: 사용자당 초당 5회, 버스트 10
+      write:
+        key: user
+        replenish-rate: 5
+        burst-capacity: 10
+        requested-tokens: 1
+      # 검색: IP당 초당 20회
+      search:
+        key: ip
+        replenish-rate: 20
+        burst-capacity: 20
+        requested-tokens: 1
 
 # Swagger는 기본으로 끄고 local 프로필에서만 켠다
 springdoc:
