@@ -36,12 +36,18 @@ spring:
         ttl: 5s
     gateway:
       routes:
-        # 회원가입·로그인. 버킷이 라우트 단위라 둘을 합쳐 IP당 분당 10회
-        - id: web-api-service-signup-login
+        - id: web-api-service-signup
           uri: lb://web-api-service
           predicates:
-            - Path=/api/v1/members, /api/v1/auth/login
+            - Path=/api/v1/members
             - Method=POST
+          filters:
+            - RateLimitFilter=signup
+
+        - id: web-api-service-login
+          uri: lb://web-api-service
+          predicates:
+            - Path=/api/v1/auth/login
           filters:
             - RateLimitFilter=login
 
@@ -147,7 +153,13 @@ app:
   rate-limit:
     enabled: true
     policies:
-      # 로그인·회원가입: IP당 분당 10회 (초당 1토큰 ÷ 6 = 10초에 1건, 처음 10건은 바로 허용)
+      # 회원가입: IP당 분당 10회 (초당 1토큰 ÷ 6 = 10초에 1건, 처음 10건은 바로 허용)
+      signup:
+        key: ip
+        replenish-rate: 1
+        burst-capacity: 60
+        requested-tokens: 6
+      # 로그인: IP당 분당 10회 (계산은 signup과 같다)
       login:
         key: ip
         replenish-rate: 1

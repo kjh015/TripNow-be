@@ -71,15 +71,14 @@ class RateLimitIntegrationTest extends RateLimitTestSupport {
     }
 
     @Test
-    @DisplayName("회원가입과 로그인은 한 라우트라 한도(분당 10회)를 함께 쓴다")
-    void signupAndLoginShareLimit() {
-        for (int i = 0; i < LOGIN_LIMIT / 2; i++) {
-            assertThat(post(SIGNUP_PATH, "10.4.0.1").getStatus()).isEqualTo(HttpStatus.OK);
+    @DisplayName("회원가입과 로그인은 한도를 따로 센다 (로그인을 다 써도 가입은 된다)")
+    void signupAndLoginCountedSeparately() {
+        for (int i = 0; i < LOGIN_LIMIT; i++) {
             assertThat(login("10.4.0.1").getStatus()).isEqualTo(HttpStatus.OK);
         }
-
-        assertThat(post(SIGNUP_PATH, "10.4.0.1").getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
         assertThat(login("10.4.0.1").getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+
+        assertThat(post(SIGNUP_PATH, "10.4.0.1").getStatus()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
@@ -89,10 +88,11 @@ class RateLimitIntegrationTest extends RateLimitTestSupport {
     }
 
     @Test
-    @DisplayName("yml의 정책 3개가 기준·한도 그대로 바인딩된다")
+    @DisplayName("yml의 정책 4개가 기준·한도 그대로 바인딩된다")
     void bindsPolicies() {
         assertThat(rateLimitProperties.policies())
-                .containsOnlyKeys("login", "write", "search")
+                .containsOnlyKeys("signup", "login", "write", "search")
+                .containsEntry("signup", new Policy(KeyType.IP, 1, 60, 6))
                 .containsEntry("login", new Policy(KeyType.IP, 1, 60, 6))
                 .containsEntry("write", new Policy(KeyType.USER, 5, 10, 1))
                 .containsEntry("search", new Policy(KeyType.IP, 20, 20, 1));

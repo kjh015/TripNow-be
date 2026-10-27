@@ -23,8 +23,8 @@ class GatewayRouteMappingTest extends IntegrationTestSupport {
     @ParameterizedTest(name = "{0} {1} → {2}")
     @DisplayName("Rate Limiting 대상은 전용 라우트로, 나머지는 기존 라우트로 간다")
     @CsvSource({
-        "POST,   /api/v1/members,                       web-api-service-signup-login",
-        "POST,   /api/v1/auth/login,                    web-api-service-signup-login",
+        "POST,   /api/v1/members,                       web-api-service-signup",
+        "POST,   /api/v1/auth/login,                    web-api-service-login",
         "GET,    /api/v1/search/posts,                  web-api-service-search",
         "GET,    /api/v1/search/posts/autocomplete,     web-api-service-search",
         "GET,    /api/v1/search/comments/me,            web-api-service-search-me",

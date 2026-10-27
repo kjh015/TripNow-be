@@ -16,9 +16,9 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
 /**
- * 라우트에 "- RateLimitFilter=<정책 이름>" 한 줄로 Rate Limiting을 건다.
- * 정책(app.rate-limit.policies)의 기준·한도로 Spring Cloud Gateway의 RequestRateLimiter를 만들어 그대로 쓴다.
- * 그래서 Redis 토큰 버킷, 429 응답, X-RateLimit-* 헤더, 빈 키 처리(deny-empty-key)는 RequestRateLimiter와 같다.
+ * 라우트에 "- RateLimitFilter=<정책 이름>"로 Rate Limiting을 적용한다.
+ * app.rate-limit.policies에 정의된 기준과 한도로 Spring Cloud Gateway의 RequestRateLimiter를 구성한다.
+ * Redis 토큰 버킷, 429 응답, X-RateLimit-* 헤더, 빈 키 처리(deny-empty-key)는 RequestRateLimiter의 동작을 따른다.
  */
 @Component
 public class RateLimitFilter extends AbstractGatewayFilterFactory<RateLimitFilter.Config> {
