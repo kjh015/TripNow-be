@@ -12,18 +12,21 @@ import com.traveler.web.domain.member.client.MemberClient;
 import com.traveler.web.domain.member.client.dto.response.MemberClientResponse;
 import com.traveler.web.global.exception.WebApiServiceException;
 import com.traveler.web.global.feign.decoder.ServiceErrorCode;
+import com.traveler.web.global.resilience.DownstreamCallExecutor;
+import com.traveler.web.global.resilience.DownstreamServiceNames;
 import feign.Request;
 import feign.RetryableException;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -35,8 +38,16 @@ class MemberClientAdapterTest {
     @Mock
     private MemberClient memberClient;
 
-    @InjectMocks
     private MemberClientAdapter memberClientAdapter;
+
+    // Resilience4j 라이브러리 기본 설정(ofDefaults)으로 서킷을 만든다. 기본값은 호출이 100번 쌓여야 판정하므로
+    // 이 테스트의 호출 수로는 서킷이 열리지 않고, 닉네임 대체 동작만 확인할 수 있다. 서킷 동작은 DownstreamCallExecutorTest가 확인한다
+    @BeforeEach
+    void setUp() {
+        CircuitBreakerRegistry registry = CircuitBreakerRegistry.ofDefaults();
+        registry.circuitBreaker(DownstreamServiceNames.MEMBER);
+        memberClientAdapter = new MemberClientAdapter(memberClient, new DownstreamCallExecutor(registry));
+    }
 
     @Nested
     @DisplayName("getNicknameMap")

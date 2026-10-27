@@ -28,12 +28,18 @@ spring:
       httpclient:
         hc5:
           enabled: true
+          connection-request-timeout: 500
+          connection-request-timeout-unit: milliseconds
+        max-connections-per-route: 100
       client:
         config:
-          # 게이트웨이 기본 response-timeout(5s) 안에 순차 호출 2회가 끝나도록 잡는다: 2 x (500 + 1800) = 4.6s
+          # 타임아웃 예산: 검색(2s) + 프로필(1.5s) = 3.5s < 게이트웨이 response-timeout(5s)
+          # 모든 프로필에 같은 값을 쓰므로 프로필 yml에서 덮어쓰지 않는다
           default:
-            connectTimeout: 500
-            readTimeout: 1800
+            connectTimeout: 1000
+            readTimeout: 1500
+          SearchPostClient:
+            readTimeout: 2000
   security:
     oauth2:
       client:
@@ -53,6 +59,35 @@ spring:
             token-uri: https://kauth.kakao.com/oauth/token
             user-info-uri: https://kapi.kakao.com/v2/user/me
             user-name-attribute: id # 카카오 사용자 정보의 Key값 (기본 id)
+
+# 서킷 브레이커: 하위 서비스 단위 4개
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        # 기본 readTimeout(1.5s)보다 짧게 잡아 타임아웃에 닿기 전에 느려지는 추세를 센다
+        slow-call-duration-threshold: 1s
+        slow-call-rate-threshold: 80
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        # 5xx·타임아웃·연결 실패만 실패로 센다. 4xx(비즈니스 예외)는 성공으로 집계된다
+        record-failure-predicate: com.traveler.web.global.resilience.DownstreamFailurePredicate
+    instances:
+      member-service:
+        base-config: default
+      post-service:
+        base-config: default
+      search-service:
+        base-config: default
+        # 검색 readTimeout이 2s라 1s 기준이면 정상 검색도 느린 호출로 많이 집계될 수 있다
+        slow-call-duration-threshold: 1500ms
+      user-activity-service:
+        base-config: default
 
 swagger:
   info:

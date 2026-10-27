@@ -11,6 +11,9 @@ public enum WebApiServiceErrorCode implements BaseErrorCode {
     SERVICE_RESPONSE_EMPTY(500, "WEB500_1", "하위 서비스가 응답 바디 없이 에러를 반환했습니다."),
     SERVICE_PARSE_ERROR(500, "WEB500_2", "하위 서비스의 에러 응답을 분석하는 데 실패했습니다."),
 
+    // 서킷 브레이커가 열려 하위 서비스를 호출하지 않은 경우
+    DOWNSTREAM_UNAVAILABLE(503, "WEB503_1", "일시적으로 서비스를 이용할 수 없습니다. 잠시 후 다시 시도해 주세요."),
+
     // JWT (Server Error)
     TOKEN_GENERATION_FAILED(500, "WEB500_3", "서버 오류로 토큰 생성 및 응답에 실패했습니다."),
 

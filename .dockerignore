@@ -28,6 +28,7 @@
 *.md
 docs
 deprecated
+load-test
 q
 
 # 도커 관련 파일 자체는 이미지에 필요 없습니다

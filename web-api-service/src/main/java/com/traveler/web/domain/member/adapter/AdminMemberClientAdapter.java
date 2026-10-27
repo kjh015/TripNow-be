@@ -3,6 +3,8 @@ package com.traveler.web.domain.member.adapter;
 import com.traveler.common.core.response.PageResponse;
 import com.traveler.web.domain.member.client.AdminMemberClient;
 import com.traveler.web.domain.member.client.dto.response.AdminMemberClientResponse;
+import com.traveler.web.global.resilience.DownstreamCallExecutor;
+import com.traveler.web.global.resilience.DownstreamServiceNames;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
@@ -11,20 +13,29 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class AdminMemberClientAdapter {
     private final AdminMemberClient adminMemberClient;
+    private final DownstreamCallExecutor downstreamCallExecutor;
 
     public AdminMemberClientResponse.GrantAdminDTO grantAdminRole(Long memberId) {
-        return adminMemberClient.grantAdminRole(memberId).result();
+        return downstreamCallExecutor.execute(
+                DownstreamServiceNames.MEMBER,
+                () -> adminMemberClient.grantAdminRole(memberId).result());
     }
 
     public AdminMemberClientResponse.DeleteDTO deleteMember(Long memberId) {
-        return adminMemberClient.deleteMember(memberId).result();
+        return downstreamCallExecutor.execute(
+                DownstreamServiceNames.MEMBER,
+                () -> adminMemberClient.deleteMember(memberId).result());
     }
 
     public PageResponse<AdminMemberClientResponse.ListDTO> getMembers(Pageable pageable) {
-        return adminMemberClient.getMembers(pageable).result();
+        return downstreamCallExecutor.execute(
+                DownstreamServiceNames.MEMBER,
+                () -> adminMemberClient.getMembers(pageable).result());
     }
 
     public AdminMemberClientResponse.DetailDTO getMember(Long memberId) {
-        return adminMemberClient.getMember(memberId).result();
+        return downstreamCallExecutor.execute(
+                DownstreamServiceNames.MEMBER,
+                () -> adminMemberClient.getMember(memberId).result());
     }
 }
