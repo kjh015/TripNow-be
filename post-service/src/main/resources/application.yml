@@ -19,6 +19,10 @@ spring:
     url: ${DB_URL}
     username: ${DB_USER}
     password: ${DB_PW}
+    hikari:
+      # 행 락 대기 제한(기본 50초). JPA lock.timeout 힌트는 MySQL에서 적용되지 않아 커넥션 세션에 건다.
+      # 넘으면 MySQL 1205 → PessimisticLockingFailureException → 409 POST_LOCK_CONFLICT
+      connection-init-sql: SET SESSION innodb_lock_wait_timeout = 3
 
   jpa:
     database: mysql

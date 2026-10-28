@@ -88,13 +88,13 @@ class PostSearchMessageConsumerTest {
     @DisplayName("STAT_UPDATED는 통계 갱신으로 처리한다")
     void statUpdated() {
         consumer.consume(
-                "{\"postId\":10,\"starAvg\":4.5,\"commentCount\":2,\"likeCount\":3,\"viewCount\":100}",
+                "{\"postId\":10,\"starAvg\":4.5,\"commentCount\":2,\"likeCount\":3,\"viewCount\":100,\"syncedAt\":1000}",
                 "STAT_UPDATED",
                 "10",
                 "event-4",
                 ack);
 
-        verify(commandService).updateStatistics(new PostSearchMessage.StatUpdatedDTO(10L, 4.5, 2L, 3L, 100L));
+        verify(commandService).updateStatistics(new PostSearchMessage.StatUpdatedDTO(10L, 4.5, 2L, 3L, 100L, 1_000L));
         verify(ack).acknowledge();
     }
 

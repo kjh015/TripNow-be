@@ -2,7 +2,7 @@ package com.traveler.post.domain.post.listener;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.traveler.post.domain.post.dto.message.PostMessage;
-import com.traveler.post.domain.post.repository.PostViewRepository;
+import com.traveler.post.domain.post.repository.PostStatsSyncRepository;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class PostViewConsumer {
-    private final PostViewRepository postViewRepository;
+    private final PostStatsSyncRepository postStatsSyncRepository;
     private final ObjectMapper objectMapper;
 
     private static final Duration IDEMPOTENCY_TTL = Duration.ofMinutes(10);
@@ -28,7 +28,8 @@ public class PostViewConsumer {
         log.debug("조회수 증가 메시지 수신 traceId: {}", dto.traceId());
 
         // 멱등성 체크와 조회수 증가
-        boolean isFirst = postViewRepository.incrementViewCountIfFirst(dto.traceId(), dto.postId(), IDEMPOTENCY_TTL);
+        boolean isFirst =
+                postStatsSyncRepository.incrementViewCountIfFirst(dto.traceId(), dto.postId(), IDEMPOTENCY_TTL);
 
         if (!isFirst) {
             log.debug("중복된 조회수 이벤트로 무시되었습니다. traceId: {}", dto.traceId());

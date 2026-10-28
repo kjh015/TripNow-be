@@ -42,7 +42,14 @@ public interface PostDocumentMapper {
 
         // record 생성 및 반환
         return new PostSearchMessage.StatUpdateDoc(
-                msg.postId(), msg.starAvg(), msg.commentCount(), msg.likeCount(), msg.viewCount(), score, score);
+                msg.postId(),
+                msg.starAvg(),
+                msg.commentCount(),
+                msg.likeCount(),
+                msg.viewCount(),
+                score,
+                score,
+                msg.syncedAt() == null ? 0L : msg.syncedAt());
     }
 
     // 가중치 계산 로직

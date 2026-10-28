@@ -2,7 +2,6 @@ package com.traveler.post.domain.like.dto.event;
 
 import com.traveler.post.domain.like.dto.message.LikeMessage;
 import com.traveler.post.domain.post.dto.event.PostEvent;
-import com.traveler.post.domain.post.dto.message.PostMessage;
 
 public final class LikeEvent {
 
@@ -10,9 +9,12 @@ public final class LikeEvent {
         throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
     }
 
-    public record Added(LikeMessage.AddedDTO likeMsg, PostMessage.UpdateStatDTO postMsg)
-            implements PostEvent.StatUpdate {}
+    public record Added(LikeMessage.AddedDTO likeMsg) implements PostEvent.StatsUpdate {
+        @Override
+        public Long postId() {
+            return likeMsg.postId();
+        }
+    }
 
-    public record Removed(LikeMessage.RemovedDTO likeMsg, PostMessage.UpdateStatDTO postMsg)
-            implements PostEvent.StatUpdate {}
+    public record Removed(LikeMessage.RemovedDTO likeMsg, Long postId) implements PostEvent.StatsUpdate {}
 }

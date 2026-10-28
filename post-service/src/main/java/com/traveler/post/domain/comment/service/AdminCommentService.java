@@ -14,6 +14,7 @@ import com.traveler.post.domain.comment.mapper.CommentMapper;
 import com.traveler.post.domain.comment.repository.CommentRepository;
 import com.traveler.post.domain.post.entity.Post;
 import com.traveler.post.domain.post.repository.PostRepository;
+import com.traveler.post.domain.post.support.PostStatsSlots;
 import com.traveler.post.global.exception.PostServiceException;
 import com.traveler.post.global.exception.code.PostServiceErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminCommentService {
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
+    private final PostStatsSlots postStatsSlots;
     private final AdminCommentMapper adminCommentMapper;
     private final CommentMapper commentMapper;
     private final ApplicationEventPublisher eventPublisher;
@@ -66,8 +68,8 @@ public class AdminCommentService {
             // 삭제된 게시물은 검색 문서가 없으므로 통계 갱신 없이 댓글 삭제 메시지만 발행
             eventPublisher.publishEvent(new CommentEvent.AdminDeleted(commentMapper.toDeletedMsgDTO(comment)));
         } else {
-            post.removeComment(comment.getStar());
-            eventPublisher.publishEvent(commentMapper.toDeletedEvent(comment, post));
+            postStatsSlots.getRandomForUpdate(post.getId()).removeComment(comment.getStar());
+            eventPublisher.publishEvent(commentMapper.toDeletedEvent(comment));
         }
 
         return adminCommentMapper.toDeleteDTO(comment);
@@ -95,10 +97,10 @@ public class AdminCommentService {
                 .event(RESTORE_COMMENT, commentId)
                 .detail("postId", post.getId())
                 .log();
-        post.addComment(comment.getStar());
+        postStatsSlots.getRandomForUpdate(post.getId()).addComment(comment.getStar());
 
-        // 검색 문서 재색인(Created) 및 게시글 통계 동기화 이벤트 발행
-        eventPublisher.publishEvent(commentMapper.toCreatedEvent(comment, post));
+        // 검색 문서 재색인(Created) 및 게시글 통계 변경
+        eventPublisher.publishEvent(commentMapper.toCreatedEvent(comment));
 
         return adminCommentMapper.toRestoreDTO(comment);
     }

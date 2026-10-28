@@ -1,21 +1,22 @@
 package com.traveler.post.domain.post.service;
 
-import static com.traveler.post.global.audit.PostServiceAuditAction.DELETE_POST;
-import static com.traveler.post.global.audit.PostServiceAuditAction.PERMANENT_DELETE_POST;
-import static com.traveler.post.global.audit.PostServiceAuditAction.RESTORE_POST;
+import static com.traveler.post.global.audit.PostServiceAuditAction.*;
 
 import com.traveler.common.api.converter.PageConverter;
 import com.traveler.common.core.response.PageResponse;
 import com.traveler.common.support.logging.audit.AuditLogger;
 import com.traveler.post.domain.post.dto.response.AdminPostResponse;
+import com.traveler.post.domain.post.dto.result.PostStatsSummary;
 import com.traveler.post.domain.post.entity.Post;
 import com.traveler.post.domain.post.mapper.AdminPostMapper;
 import com.traveler.post.domain.post.mapper.PostMapper;
 import com.traveler.post.domain.post.repository.PostRepository;
 import com.traveler.post.domain.post.support.PostHardDeleter;
+import com.traveler.post.domain.post.support.PostStatsSlots;
 import com.traveler.post.global.exception.PostServiceException;
 import com.traveler.post.global.exception.code.PostServiceErrorCode;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -29,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class AdminPostService {
     private final PostRepository postRepository;
+    private final PostStatsSlots postStatsSlots;
     private final PostHardDeleter postHardDeleter;
     private final AdminPostMapper adminPostMapper;
     private final PostMapper postMapper;
@@ -40,7 +42,11 @@ public class AdminPostService {
         // 네이티브 쿼리에 ORDER BY가 고정되어 있으므로 Pageable의 sort는 제거하고 page/size만 사용
         Pageable unsorted = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
         Page<Post> posts = postRepository.findAllForAdmin(deleted, unsorted);
-        return PageConverter.toPageResponse(posts, adminPostMapper::toListDTO);
+        // 페이지의 게시글 통계를 한 번에 조회
+        Map<Long, PostStatsSummary> statsByPostId =
+                postStatsSlots.summarizeByPostId(posts.map(Post::getId).getContent());
+        return PageConverter.toPageResponse(
+                posts, post -> adminPostMapper.toListDTO(post, statsByPostId.get(post.getId())));
     }
 
     @Transactional(readOnly = true)
@@ -49,7 +55,7 @@ public class AdminPostService {
                 .findByIdForAdmin(postId)
                 .orElseThrow(() -> new PostServiceException(PostServiceErrorCode.POST_NOT_FOUND));
 
-        return adminPostMapper.toDetailDTO(post);
+        return adminPostMapper.toDetailDTO(post, postStatsSlots.summarize(postId));
     }
 
     public AdminPostResponse.DeleteDTO deletePost(Long postId) {
@@ -76,9 +82,8 @@ public class AdminPostService {
         post.restore();
         auditLogger.log(RESTORE_POST, postId);
 
-        // 삭제 시 검색 문서가 제거되므로 재색인(Created) 후 통계(StatUpdated)를 동기화
-        eventPublisher.publishEvent(postMapper.toCreatedEvent(post));
-        eventPublisher.publishEvent(postMapper.toStatUpdatedEvent(post));
+        // 삭제 시 검색 문서가 제거되므로 다시 색인(Event.Restore). Stat 통계는 스케줄러가 보낸다(Event.StatUpdate).
+        eventPublisher.publishEvent(postMapper.toRestoredEvent(post));
 
         return adminPostMapper.toRestoreDTO(post);
     }

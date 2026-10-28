@@ -5,12 +5,14 @@ import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
+import co.elastic.clients.json.JsonData;
 import co.elastic.clients.util.NamedValue;
 import com.traveler.search.domain.post.document.PostDocument;
 import com.traveler.search.domain.post.dto.message.PostSearchMessage;
 import com.traveler.search.domain.post.dto.request.PostSearchRequest;
 import com.traveler.search.domain.post.enums.PostSortType;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -103,13 +105,42 @@ public class PostDocumentRepositoryImpl implements PostDocumentRepositoryCustom 
                 PostSearchMessage.UpdatedDTO.class);
     }
 
+    /**
+     * 문서에 저장된 statSyncedAt보다 새로운 통계만 반영한다. 재전송되거나 순서가 바뀌어 늦게 도착한 예전 통계가 최신 값을 덮어쓰지 않는다.
+     * 문서가 없으면 404
+     */
+    private static final String UPDATE_STATISTICS_SCRIPT =
+            """
+            if (ctx._source.statSyncedAt != null && ctx._source.statSyncedAt >= params.statSyncedAt) {
+                ctx.op = 'noop';
+            } else {
+                ctx._source.starAvg = params.starAvg;
+                ctx._source.commentCount = params.commentCount;
+                ctx._source.likeCount = params.likeCount;
+                ctx._source.viewCount = params.viewCount;
+                ctx._source.popularityScore = params.popularityScore;
+                ctx._source.popularityScoreValue = params.popularityScoreValue;
+                ctx._source.statSyncedAt = params.statSyncedAt;
+            }
+            """;
+
     @SneakyThrows
     @Override
     public void updateStatistics(PostSearchMessage.StatUpdateDoc doc) {
+        Map<String, JsonData> params = Map.of(
+                "starAvg", JsonData.of(doc.starAvg()),
+                "commentCount", JsonData.of(doc.commentCount()),
+                "likeCount", JsonData.of(doc.likeCount()),
+                "viewCount", JsonData.of(doc.viewCount()),
+                "popularityScore", JsonData.of(doc.popularityScore()),
+                "popularityScoreValue", JsonData.of(doc.popularityScoreValue()),
+                "statSyncedAt", JsonData.of(doc.statSyncedAt()));
         client.update(
                 u -> u.index(postIndexName)
                         .id(String.valueOf(doc.postId()))
-                        .doc(doc)
+                        .script(s -> s.lang("painless")
+                                .source(UPDATE_STATISTICS_SCRIPT)
+                                .params(params))
                         .retryOnConflict(3),
                 PostSearchMessage.StatUpdateDoc.class);
     }

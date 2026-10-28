@@ -25,8 +25,10 @@ import com.traveler.post.domain.post.enums.Region;
 import com.traveler.post.domain.post.mapper.PostMapper;
 import com.traveler.post.domain.post.mapper.TravelPlaceMapper;
 import com.traveler.post.domain.post.repository.PostRepository;
+import com.traveler.post.domain.post.repository.PostStatsRepository;
 import com.traveler.post.domain.post.support.PostHardDeleter;
 import com.traveler.post.domain.post.support.PostImageKeyValidator;
+import com.traveler.post.domain.post.support.PostStatsSlots;
 import com.traveler.post.global.exception.PostServiceException;
 import com.traveler.post.global.exception.code.PostServiceErrorCode;
 import com.traveler.post.global.s3.S3Service;
@@ -45,6 +47,8 @@ class PostServiceTest {
     private static final Long POST_ID = 10L;
 
     private final PostRepository postRepository = mock(PostRepository.class);
+    private final PostStatsRepository postStatsRepository = mock(PostStatsRepository.class);
+    private final PostStatsSlots postStatsSlots = mock(PostStatsSlots.class);
     private final PostMapper postMapper = mock(PostMapper.class);
     private final TravelPlaceMapper travelPlaceMapper = mock(TravelPlaceMapper.class);
     private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
@@ -54,6 +58,8 @@ class PostServiceTest {
 
     private final PostService postService = new PostService(
             postRepository,
+            postStatsRepository,
+            postStatsSlots,
             postMapper,
             travelPlaceMapper,
             eventPublisher,

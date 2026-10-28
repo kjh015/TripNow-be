@@ -46,7 +46,7 @@ public class PostServiceExceptionAdvice implements BaseExceptionAdvice {
     }
 
     /**
-     * 게시글 비관적 락(findByIdWithLock) 대기 초과·데드락. 같은 게시글에 좋아요·댓글이 몰릴 때 발생한다.
+     * 행 락 대기 초과(innodb_lock_wait_timeout 3초)·데드락. 같은 게시글의 통계(post_stats) 행에 좋아요·댓글이 몰릴 때 발생한다.
      * 경합은 일시적이고 클라이언트가 재시도하면 되므로 500이 아닌 409로 응답한다.
      */
     @ExceptionHandler(PessimisticLockingFailureException.class)

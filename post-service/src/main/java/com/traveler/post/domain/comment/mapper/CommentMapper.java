@@ -5,16 +5,13 @@ import com.traveler.post.domain.comment.dto.message.CommentMessage;
 import com.traveler.post.domain.comment.dto.request.CommentRequest;
 import com.traveler.post.domain.comment.dto.response.CommentResponse;
 import com.traveler.post.domain.comment.entity.Comment;
+import com.traveler.post.domain.post.dto.result.PostStatsSummary;
 import com.traveler.post.domain.post.entity.Post;
-import com.traveler.post.domain.post.mapper.PostMapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
 
-@Mapper(
-        componentModel = "spring",
-        unmappedTargetPolicy = ReportingPolicy.IGNORE,
-        uses = {PostMapper.class})
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface CommentMapper {
 
     @Mapping(source = "dto.content", target = "content")
@@ -24,14 +21,20 @@ public interface CommentMapper {
     @Mapping(target = "id", ignore = true)
     Comment toCreateEntity(CommentRequest.CreateDTO dto, Post post, Long memberId);
 
-    @Mapping(source = "id", target = "commentId")
-    CommentResponse.CreateDTO toCreateDTO(Comment comment);
+    default CommentResponse.CreateDTO toCreateDTO(Comment comment, PostStatsSummary stats) {
+        return new CommentResponse.CreateDTO(
+                comment.getId(), comment.getCreatedAt(), stats.commentCount(), stats.starAvg());
+    }
 
-    @Mapping(source = "id", target = "commentId")
-    CommentResponse.UpdateDTO toUpdateDTO(Comment comment);
+    default CommentResponse.UpdateDTO toUpdateDTO(Comment comment, PostStatsSummary stats) {
+        return new CommentResponse.UpdateDTO(
+                comment.getId(), comment.getUpdatedAt(), stats.commentCount(), stats.starAvg());
+    }
 
-    @Mapping(source = "id", target = "commentId")
-    CommentResponse.DeleteDTO toDeleteDTO(Comment comment);
+    default CommentResponse.DeleteDTO toDeleteDTO(Comment comment, PostStatsSummary stats) {
+        return new CommentResponse.DeleteDTO(
+                comment.getId(), comment.getDeletedAt(), stats.commentCount(), stats.starAvg());
+    }
 
     // Message
     @Mapping(source = "comment.id", target = "commentId")
@@ -44,15 +47,18 @@ public interface CommentMapper {
     CommentMessage.DeletedDTO toDeletedMsgDTO(Comment comment);
 
     // Event
-    @Mapping(target = "commentMsg", expression = "java(toCreatedMsgDTO(comment, post.getId()))") // toCreatedMsgDTO 호출
-    @Mapping(target = "postMsg", source = "post") // postMapper.toUpdateStatusDTO 호출
-    CommentEvent.Created toCreatedEvent(Comment comment, Post post);
+    default CommentEvent.Created toCreatedEvent(Comment comment) {
+        return new CommentEvent.Created(
+                toCreatedMsgDTO(comment, comment.getPost().getId()));
+    }
 
-    @Mapping(target = "commentMsg", source = "comment")
-    @Mapping(target = "postMsg", source = "post")
-    CommentEvent.Updated toUpdatedEvent(Comment comment, Post post);
+    default CommentEvent.Updated toUpdatedEvent(Comment comment) {
+        return new CommentEvent.Updated(
+                toUpdatedMsgDTO(comment), comment.getPost().getId());
+    }
 
-    @Mapping(target = "commentMsg", source = "comment")
-    @Mapping(target = "postMsg", source = "post")
-    CommentEvent.Deleted toDeletedEvent(Comment comment, Post post);
+    default CommentEvent.Deleted toDeletedEvent(Comment comment) {
+        return new CommentEvent.Deleted(
+                toDeletedMsgDTO(comment), comment.getPost().getId());
+    }
 }

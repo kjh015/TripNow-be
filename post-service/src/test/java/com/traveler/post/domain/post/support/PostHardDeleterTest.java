@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.traveler.post.domain.comment.entity.Comment;
 import com.traveler.post.domain.like.entity.Like;
 import com.traveler.post.domain.post.entity.Post;
+import com.traveler.post.domain.post.entity.PostStats;
 import com.traveler.post.domain.post.entity.TravelPlace;
 import com.traveler.post.domain.post.repository.PostRepository;
 import jakarta.persistence.EntityManager;
@@ -32,7 +33,9 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
             "spring.datasource.password=",
             "spring.jpa.database=h2",
             "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
-            "spring.jpa.hibernate.ddl-auto=create-drop"
+            "spring.jpa.hibernate.ddl-auto=create-drop",
+            // 운영 설정의 MySQL 전용 락 대기 제한(SET SESSION innodb_lock_wait_timeout)은 H2에서 실행되지 않는다
+            "spring.datasource.hikari.connection-init-sql=SELECT 1"
         })
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({PostHardDeleter.class, PostHardDeleterTest.AuditingConfig.class})
@@ -52,7 +55,7 @@ class PostHardDeleterTest {
     private EntityManager em;
 
     @Test
-    @DisplayName("이미지·좋아요·댓글·장소가 달린 소프트 삭제 게시글을 영구 삭제하면 자식 행이 모두 지워진다")
+    @DisplayName("이미지·좋아요·댓글·통계·장소가 달린 소프트 삭제 게시글을 영구 삭제하면 자식 행이 모두 지워진다")
     void hardDeleteRemovesChildRows() {
         Post target = persistPostWithChildren(true);
         Post other = persistPostWithChildren(false);
@@ -71,6 +74,8 @@ class PostHardDeleterTest {
                 .isZero();
         assertThat(count("SELECT COUNT(*) FROM comment WHERE post_id = ?1", target.getId()))
                 .isZero();
+        assertThat(count("SELECT COUNT(*) FROM post_stats WHERE post_id = ?1", target.getId()))
+                .isZero();
         assertThat(count("SELECT COUNT(*) FROM travel_place WHERE id = ?1", targetPlaceId))
                 .isZero();
 
@@ -83,6 +88,8 @@ class PostHardDeleterTest {
                 .isEqualTo(2);
         assertThat(count("SELECT COUNT(*) FROM comment WHERE post_id = ?1", other.getId()))
                 .isEqualTo(2);
+        assertThat(count("SELECT COUNT(*) FROM post_stats WHERE post_id = ?1", other.getId()))
+                .isEqualTo(PostStats.SLOT_COUNT);
     }
 
     @Test
@@ -131,6 +138,7 @@ class PostHardDeleterTest {
         post.addPostImage(MEMBER_1_KEY, 1);
         post.addPostImage(MEMBER_1_KEY_2, 2);
         em.persist(post);
+        PostStats.createSlots(post).forEach(em::persist);
 
         em.persist(Like.builder().memberId(2L).post(post).build());
         em.persist(Like.builder().memberId(3L).post(post).build());

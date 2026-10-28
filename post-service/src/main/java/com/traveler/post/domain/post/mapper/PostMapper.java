@@ -4,6 +4,7 @@ import com.traveler.post.domain.post.dto.event.PostEvent;
 import com.traveler.post.domain.post.dto.message.PostMessage;
 import com.traveler.post.domain.post.dto.request.PostRequest;
 import com.traveler.post.domain.post.dto.response.PostResponse;
+import com.traveler.post.domain.post.dto.result.PostStatsSummary;
 import com.traveler.post.domain.post.entity.Post;
 import com.traveler.post.domain.post.entity.PostImage;
 import com.traveler.post.domain.post.entity.TravelPlace;
@@ -62,6 +63,9 @@ public interface PostMapper {
     @Mapping(target = "postMsg", source = "post")
     PostEvent.Deleted toDeletedEvent(Post post);
 
+    @Mapping(target = "postMsg", source = "post")
+    PostEvent.Restored toRestoredEvent(Post post);
+
     default PostEvent.ImagesDelete toImageDeleteEvent(Long postId, List<String> imageKeys) {
         PostMessage.ImagesDeleteDTO dto = toDeleteImagesMsgDTO(postId, imageKeys);
         return (dto == null) ? null : new PostEvent.ImagesDelete(dto);
@@ -72,9 +76,8 @@ public interface PostMapper {
         return (dto == null) ? null : new PostEvent.ImagesDeleteBatch(dto);
     }
 
-    @Mapping(source = "id", target = "postId")
-    PostMessage.UpdateStatDTO toUpdateStatusDTO(Post post);
-
-    @Mapping(target = "postMsg", source = "post")
-    PostEvent.StatUpdated toStatUpdatedEvent(Post post);
+    default PostEvent.StatUpdated toStatUpdatedEvent(Post post, PostStatsSummary stats, long syncedAt) {
+        return new PostEvent.StatUpdated(new PostMessage.UpdateStatDTO(
+                post.getId(), stats.starAvg(), stats.commentCount(), stats.likeCount(), post.getViewCount(), syncedAt));
+    }
 }

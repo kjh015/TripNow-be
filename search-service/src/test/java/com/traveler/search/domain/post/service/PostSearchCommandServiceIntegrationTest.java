@@ -76,7 +76,7 @@ class PostSearchCommandServiceIntegrationTest extends IntegrationTestSupport {
     void updateStatisticsIsIdempotent() {
         long postId = nextId();
         commandService.createDocument(created(postId, "통계"));
-        PostSearchMessage.StatUpdatedDTO stat = new PostSearchMessage.StatUpdatedDTO(postId, 4.0, 2L, 3L, 10L);
+        PostSearchMessage.StatUpdatedDTO stat = new PostSearchMessage.StatUpdatedDTO(postId, 4.0, 2L, 3L, 10L, 1_000L);
 
         commandService.updateStatistics(stat);
         commandService.updateStatistics(stat);
@@ -86,6 +86,27 @@ class PostSearchCommandServiceIntegrationTest extends IntegrationTestSupport {
         assertThat(doc.getCommentCount()).isEqualTo(2L);
         // 3*5 + 2*3 + 10*0.1 + 4.0*10
         assertThat(doc.getPopularityScoreValue()).isEqualTo(62.0);
+    }
+
+    @Test
+    @DisplayName("syncedAt이 저장된 값보다 오래된 통계(재전송·순서 뒤바뀜)는 무시하고, 새로운 통계만 반영한다")
+    void staleStatisticsAreIgnored() {
+        long postId = nextId();
+        commandService.createDocument(created(postId, "통계 순서"));
+
+        commandService.updateStatistics(new PostSearchMessage.StatUpdatedDTO(postId, 4.0, 2L, 30L, 10L, 2_000L));
+        commandService.updateStatistics(new PostSearchMessage.StatUpdatedDTO(postId, 1.0, 1L, 5L, 1L, 1_000L));
+
+        PostDocument afterStale = postDocumentRepository.findById(postId).orElseThrow();
+        assertThat(afterStale.getLikeCount()).isEqualTo(30L);
+        assertThat(afterStale.getCommentCount()).isEqualTo(2L);
+
+        commandService.updateStatistics(new PostSearchMessage.StatUpdatedDTO(postId, 3.0, 3L, 31L, 11L, 3_000L));
+
+        PostDocument afterNewer = postDocumentRepository.findById(postId).orElseThrow();
+        assertThat(afterNewer.getLikeCount()).isEqualTo(31L);
+        assertThat(afterNewer.getCommentCount()).isEqualTo(3L);
+        assertThat(afterNewer.getStarAvg()).isEqualTo(3.0);
     }
 
     @Test
@@ -109,8 +130,8 @@ class PostSearchCommandServiceIntegrationTest extends IntegrationTestSupport {
 
         assertDocumentMissing(() -> commandService.updateDocument(
                 new PostSearchMessage.UpdatedDTO(postId, "늦게 온 갱신", null, null, null, null, null, null, null)));
-        assertDocumentMissing(
-                () -> commandService.updateStatistics(new PostSearchMessage.StatUpdatedDTO(postId, 1.0, 1L, 1L, 1L)));
+        assertDocumentMissing(() ->
+                commandService.updateStatistics(new PostSearchMessage.StatUpdatedDTO(postId, 1.0, 1L, 1L, 1L, 1_000L)));
 
         assertThat(postDocumentRepository.findById(postId)).isEmpty();
     }
