@@ -1,5 +1,6 @@
 package com.traveler.post.global.outbox.event;
 
+import com.traveler.post.global.config.AsyncConfig;
 import com.traveler.post.global.outbox.service.OutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +22,7 @@ public class OutboxEventListener {
     }
 
     /** [STEP 2] 커밋 후: 비동기로 Kafka 메시지 발행 */
-    @Async("outboxTaskExecutor") // 별도 스레드 풀 사용 권장
+    @Async(AsyncConfig.OUTBOX_TASK_EXECUTOR) // 별도 스레드 풀 사용
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void publishToKafka(OutboxEvent event) {
         outboxService.publish(event);

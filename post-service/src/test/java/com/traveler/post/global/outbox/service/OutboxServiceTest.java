@@ -50,8 +50,9 @@ class OutboxServiceTest {
 
     @BeforeEach
     void setUp() {
-        // 발행 경로(OutboxRelay → KafkaProducer)는 진짜로 두고 KafkaTemplate만 가짜로 둔다
-        OutboxRelay outboxRelay = new OutboxRelay(new KafkaProducer(kafkaTemplate), outboxStatusManager);
+        // 발행 경로(OutboxRelay → KafkaProducer)는 진짜로 두고 KafkaTemplate만 가짜로 둔다.
+        // 상태 갱신은 호출 스레드에서 바로 실행해 검증 시점에 끝나 있게 한다(스레드 분리는 OutboxRelayTest)
+        OutboxRelay outboxRelay = new OutboxRelay(new KafkaProducer(kafkaTemplate), outboxStatusManager, Runnable::run);
         outboxService =
                 new OutboxService(outboxRepository, new ObjectMapper(), outboxMapper, outboxStatusManager, outboxRelay);
         stubSuccessfulSend(kafkaTemplate);
