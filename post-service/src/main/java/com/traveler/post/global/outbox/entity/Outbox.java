@@ -6,6 +6,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
+import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -17,6 +19,8 @@ import lombok.experimental.SuperBuilder;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+// 상태별 건수(OutboxMetrics), 재시도 대상 조회(status), SENT 정리(status + sent_at)가 함께 사용
+@Table(indexes = {@Index(name = "idx_outbox_status_sent_at", columnList = "status, sent_at")})
 public class Outbox extends BaseEntity {
 
     @Column(unique = true, nullable = false, length = 36)
@@ -44,7 +48,12 @@ public class Outbox extends BaseEntity {
         this.sentAt = Instant.now();
     }
 
+    // 전송 완료 콜백은 상태 갱신 풀의 대기열을 거쳐 늦게 올 수 있다. 그사이 재시도가 SENT로 바꿨으면
+    // 늦은 실패 결과로 되돌리지 않는다(되돌리면 재시도 스케줄러가 한 번 더 발행한다)
     public void failed() {
+        if (this.status == OutboxStatus.SENT) {
+            return;
+        }
         this.status = OutboxStatus.FAILED;
     }
 

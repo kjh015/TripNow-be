@@ -38,7 +38,9 @@ public final class PostSearchMessage {
 
     public record DeletedDTO(Long postId) {}
 
-    public record StatUpdatedDTO(Long postId, Double starAvg, Long commentCount, Long likeCount, Long viewCount) {}
+    // syncedAt: post-service가 통계를 읽어 발행한 시각(epoch ms). 이보다 새로운 통계가 이미 반영돼 있으면 무시한다
+    public record StatUpdatedDTO(
+            Long postId, Double starAvg, Long commentCount, Long likeCount, Long viewCount, Long syncedAt) {}
 
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     public record StatUpdateDoc(
@@ -48,5 +50,6 @@ public final class PostSearchMessage {
             Long likeCount,
             Long viewCount,
             Double popularityScore,
-            Double popularityScoreValue) {}
+            Double popularityScoreValue,
+            Long statSyncedAt) {}
 }

@@ -40,20 +40,15 @@ public class Post extends BaseEntity {
     @Column(length = 2000)
     private String content;
 
+    // view_count(조회수)는 user-activity-service가 발행한 조회 이벤트(Kafka)를 Redis에 모아 두고,
+    // 통계 동기화 스케줄러(PostStatsSyncScheduler)가 5초마다 일괄 반영한다.
+    // 스케줄러는 한 서버에서만 실행되므로 동시 갱신이 발생하지 않아 post 칼럼으로 둔다.
+    //
+    // like_count(좋아요 수), comment_count(댓글 수), star_sum(별점 합계)은 사용자 요청마다 갱신된다.
+    // 같은 게시글에 요청이 집중되면 post 칼럼의 잠금 경합이 발생하므로,
+    // 이 값들은 PostStats(post_stats)에 게시글당 여러 행(슬롯)으로 분산한다.
     @Builder.Default
     private Long viewCount = 0L;
-
-    @Builder.Default
-    private Long commentCount = 0L;
-
-    @Builder.Default
-    private Long likeCount = 0L;
-
-    @Builder.Default
-    private Long starSum = 0L;
-
-    @Builder.Default
-    private Double starAvg = 0.0;
 
     @Builder.Default
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -136,41 +131,6 @@ public class Post extends BaseEntity {
         return keys.stream()
                 .filter(key -> !currentKeys.contains(key))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
-    }
-
-    public void addComment(int star) {
-        validateNotDeleted();
-        this.commentCount++;
-        this.starSum += star;
-        this.starAvg = (double) this.starSum / this.commentCount;
-    }
-
-    public void updateComment(int oldStar, int newStar) {
-        validateNotDeleted();
-        this.starSum = this.starSum - oldStar + newStar;
-        this.starAvg = this.commentCount > 0 ? (double) this.starSum / this.commentCount : 0.0;
-    }
-
-    // 삭제된 게시글의 댓글을 어드민이 지울 때는 AdminCommentService가 카운터 갱신 없이 처리하므로 이 메서드를 호출하지 않는다
-    public void removeComment(int star) {
-        validateNotDeleted();
-        if (this.commentCount > 0) {
-            this.commentCount--;
-            this.starSum -= star;
-            this.starAvg = this.commentCount > 0 ? (double) this.starSum / this.commentCount : 0.0;
-        }
-    }
-
-    public void addLike() {
-        validateNotDeleted();
-        this.likeCount++;
-    }
-
-    public void removeLike() {
-        validateNotDeleted();
-        if (this.likeCount > 0) {
-            this.likeCount--;
-        }
     }
 
     private void validateNotDeleted() {

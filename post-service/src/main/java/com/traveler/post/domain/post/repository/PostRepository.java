@@ -1,8 +1,6 @@
 package com.traveler.post.domain.post.repository;
 
 import com.traveler.post.domain.post.entity.Post;
-import jakarta.persistence.LockModeType;
-import jakarta.persistence.QueryHint;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -45,11 +43,6 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM TravelPlace tp WHERE tp.id IN :travelPlaceIds")
     void hardDeleteTravelPlacesByIds(@Param("travelPlaceIds") List<Long> travelPlaceIds);
-
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @QueryHints({@QueryHint(name = "jakarta.persistence.lock.timeout", value = "3000")})
-    @Query("select p from Post p where p.id = :id")
-    Optional<Post> findByIdWithLock(@Param("id") Long id);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Post p SET p.viewCount = p.viewCount + :increment WHERE p.id = :postId")

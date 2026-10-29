@@ -1,6 +1,7 @@
 package com.traveler.post.domain.post.mapper;
 
 import com.traveler.post.domain.post.dto.response.AdminPostResponse;
+import com.traveler.post.domain.post.dto.result.PostStatsSummary;
 import com.traveler.post.domain.post.entity.Post;
 import com.traveler.post.domain.post.entity.PostImage;
 import java.util.Comparator;
@@ -12,17 +13,20 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface AdminPostMapper {
 
-    @Mapping(source = "id", target = "postId")
-    @Mapping(source = "deleted", target = "isDeleted")
-    AdminPostResponse.ListDTO toListDTO(Post post);
+    @Mapping(source = "post.id", target = "postId")
+    @Mapping(source = "post.deleted", target = "isDeleted")
+    @Mapping(source = "post.createdAt", target = "createdAt")
+    AdminPostResponse.ListDTO toListDTO(Post post, PostStatsSummary stats);
 
-    @Mapping(source = "id", target = "postId")
-    @Mapping(source = "deleted", target = "isDeleted")
-    @Mapping(source = "travelPlace.category", target = "category")
-    @Mapping(source = "travelPlace.region", target = "region")
-    @Mapping(source = "travelPlace.name", target = "travelPlace")
-    @Mapping(source = "travelPlace.address", target = "address")
-    AdminPostResponse.DetailDTO toDetailDTO(Post post);
+    @Mapping(source = "post.id", target = "postId")
+    @Mapping(source = "post.deleted", target = "isDeleted")
+    @Mapping(source = "post.createdAt", target = "createdAt")
+    @Mapping(source = "post.updatedAt", target = "updatedAt")
+    @Mapping(source = "post.travelPlace.category", target = "category")
+    @Mapping(source = "post.travelPlace.region", target = "region")
+    @Mapping(source = "post.travelPlace.name", target = "travelPlace")
+    @Mapping(source = "post.travelPlace.address", target = "address")
+    AdminPostResponse.DetailDTO toDetailDTO(Post post, PostStatsSummary stats);
 
     @Mapping(source = "id", target = "postId")
     AdminPostResponse.DeleteDTO toDeleteDTO(Post post);

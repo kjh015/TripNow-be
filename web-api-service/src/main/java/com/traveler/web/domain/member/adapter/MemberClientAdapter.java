@@ -1,5 +1,6 @@
 package com.traveler.web.domain.member.adapter;
 
+import com.traveler.web.domain.member.cache.MemberNicknameCache;
 import com.traveler.web.domain.member.client.MemberClient;
 import com.traveler.web.domain.member.client.dto.request.MemberClientRequest;
 import com.traveler.web.domain.member.client.dto.response.MemberClientResponse;
@@ -17,6 +18,7 @@ public class MemberClientAdapter {
 
     private final MemberClient memberClient;
     private final DownstreamCallExecutor downstreamCallExecutor;
+    private final MemberNicknameCache memberNicknameCache;
 
     public MemberClientResponse.SignUpDTO signUp(MemberClientRequest.SignUpDTO dto) {
         return downstreamCallExecutor.execute(
@@ -24,14 +26,18 @@ public class MemberClientAdapter {
     }
 
     public MemberClientResponse.WithdrawDTO withdraw() {
-        return downstreamCallExecutor.execute(
+        MemberClientResponse.WithdrawDTO response = downstreamCallExecutor.execute(
                 DownstreamServiceNames.MEMBER, () -> memberClient.withdraw().result());
+        memberNicknameCache.evict(response != null ? response.memberId() : null);
+        return response;
     }
 
     public MemberClientResponse.UpdateDTO updateMember(MemberClientRequest.UpdateDTO dto) {
-        return downstreamCallExecutor.execute(
+        MemberClientResponse.UpdateDTO response = downstreamCallExecutor.execute(
                 DownstreamServiceNames.MEMBER,
                 () -> memberClient.updateMember(dto).result());
+        memberNicknameCache.evict(response != null ? response.memberId() : null);
+        return response;
     }
 
     public MemberClientResponse.UpdatePasswordDTO updatePassword(MemberClientRequest.UpdatePasswordDTO dto) {
@@ -65,31 +71,53 @@ public class MemberClientAdapter {
 
     /**
      * 요청한 모든 memberId에 닉네임을 채워 반환한다.
+     * 캐시에 있는 회원은 그대로 쓰고, 없는 회원만 member-service에 묻는다(캐시 → 서킷 브레이커 → member 호출).
      * 닉네임은 부가 정보이므로 member-service 장애(5xx·타임아웃·연결 실패)나 서킷 열림 시 기본 닉네임으로 대체하고,
-     * 4xx는 BFF의 잘못된 요청이므로 그대로 전파한다.
+     * 4xx는 BFF의 잘못된 요청이므로 그대로 전파한다. 기본 닉네임은 캐시에 넣지 않는다.
      */
     public Map<Long, String> getNicknameMap(Set<Long> memberIds) {
         if (memberIds == null || memberIds.isEmpty()) {
             return Collections.emptyMap();
         }
 
-        Map<Long, String> fetched = downstreamCallExecutor.executeOrDefault(
-                DownstreamServiceNames.MEMBER, () -> fetchNicknameMap(memberIds), Collections.emptyMap());
+        Map<Long, String> nicknameMap = new HashMap<>(memberNicknameCache.getAll(memberIds));
+        Set<Long> missingIds = memberIds.stream()
+                .filter(memberId -> !nicknameMap.containsKey(memberId))
+                .collect(Collectors.toSet());
+        if (missingIds.isEmpty()) {
+            return nicknameMap;
+        }
 
-        Map<Long, String> nicknameMap = new HashMap<>();
-        memberIds.forEach(memberId -> nicknameMap.put(memberId, fetched.getOrDefault(memberId, DEFAULT_NICKNAME)));
+        long cacheVersion = memberNicknameCache.version();
+        Map<Long, String> fetched = downstreamCallExecutor.executeOrDefault(
+                DownstreamServiceNames.MEMBER, () -> fetchNicknameMap(missingIds), Collections.emptyMap());
+        memberNicknameCache.putAll(fetched, cacheVersion);
+
+        missingIds.forEach(memberId -> nicknameMap.put(memberId, fetched.getOrDefault(memberId, DEFAULT_NICKNAME)));
         return nicknameMap;
     }
 
+    /** 캐시 → 서킷 브레이커 → member 호출 순서. 장애로 받은 기본 닉네임은 캐시에 넣지 않는다. */
     public String getMemberNickname(Long memberId) {
-        return downstreamCallExecutor.executeOrDefault(
+        String cached = memberNicknameCache.get(memberId);
+        if (cached != null) {
+            return cached;
+        }
+
+        long cacheVersion = memberNicknameCache.version();
+        String nickname = downstreamCallExecutor.executeOrDefault(
                 DownstreamServiceNames.MEMBER,
                 () -> {
                     MemberClientResponse.ProfileDTO profile =
                             memberClient.getMemberProfile(memberId).result();
-                    return nicknameOrDefault(profile != null ? profile.nickname() : null);
+                    return profile != null ? profile.nickname() : null;
                 },
-                DEFAULT_NICKNAME);
+                null);
+        if (nickname == null) {
+            return DEFAULT_NICKNAME;
+        }
+        memberNicknameCache.put(memberId, nickname, cacheVersion);
+        return nickname;
     }
 
     public String getMyNickname() {

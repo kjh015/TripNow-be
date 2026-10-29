@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.http.Fault;
+import com.traveler.web.domain.member.cache.MemberNicknameCache;
 import com.traveler.web.domain.member.client.MemberClient;
 import com.traveler.web.global.exception.WebApiServiceException;
 import com.traveler.web.global.exception.code.WebApiServiceErrorCode;
@@ -59,7 +60,7 @@ class MemberClientAdapterWireMockTest {
         CircuitBreakerAutoConfiguration.class
     })
     @EnableFeignClients(clients = MemberClient.class)
-    @Import({MemberClientAdapter.class, DownstreamCallExecutor.class})
+    @Import({MemberClientAdapter.class, DownstreamCallExecutor.class, MemberNicknameCache.class})
     static class FeignTestConfig {}
 
     @DynamicPropertySource
@@ -73,9 +74,15 @@ class MemberClientAdapterWireMockTest {
     @Autowired
     private MemberClientAdapter memberClientAdapter;
 
+    @Autowired
+    private MemberNicknameCache memberNicknameCache;
+
+    // 컨텍스트를 테스트끼리 공유하므로, 앞 테스트에서 캐시에 들어간 닉네임이 다음 테스트의 호출을 가리지 않게 지운다
     @BeforeEach
     void resetStubs() {
         WIRE_MOCK.resetAll();
+        memberNicknameCache.evict(1L);
+        memberNicknameCache.evict(2L);
     }
 
     @AfterAll

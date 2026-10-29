@@ -2,12 +2,17 @@ package com.traveler.web.domain.member.adapter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import com.traveler.common.core.code.SuccessCode;
 import com.traveler.common.core.response.ApiResponse;
+import com.traveler.web.domain.member.cache.MemberNicknameCache;
 import com.traveler.web.domain.member.client.MemberClient;
 import com.traveler.web.domain.member.client.dto.response.MemberClientResponse;
 import com.traveler.web.global.exception.WebApiServiceException;
@@ -17,6 +22,7 @@ import com.traveler.web.global.resilience.DownstreamServiceNames;
 import feign.Request;
 import feign.RetryableException;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -38,6 +44,7 @@ class MemberClientAdapterTest {
     @Mock
     private MemberClient memberClient;
 
+    private MemberNicknameCache memberNicknameCache;
     private MemberClientAdapter memberClientAdapter;
 
     // Resilience4j 라이브러리 기본 설정(ofDefaults)으로 서킷을 만든다. 기본값은 호출이 100번 쌓여야 판정하므로
@@ -46,7 +53,9 @@ class MemberClientAdapterTest {
     void setUp() {
         CircuitBreakerRegistry registry = CircuitBreakerRegistry.ofDefaults();
         registry.circuitBreaker(DownstreamServiceNames.MEMBER);
-        memberClientAdapter = new MemberClientAdapter(memberClient, new DownstreamCallExecutor(registry));
+        memberNicknameCache = new MemberNicknameCache();
+        memberClientAdapter =
+                new MemberClientAdapter(memberClient, new DownstreamCallExecutor(registry), memberNicknameCache);
     }
 
     @Nested
@@ -174,6 +183,136 @@ class MemberClientAdapterTest {
             given(memberClient.getMyProfile()).willThrow(exception);
 
             assertThatThrownBy(() -> memberClientAdapter.getMyNickname()).isSameAs(exception);
+        }
+    }
+
+    @Nested
+    @DisplayName("닉네임 캐시")
+    class NicknameCache {
+
+        @Test
+        @DisplayName("상세: 한 번 받은 닉네임은 캐시에서 꺼내 member-service를 다시 부르지 않는다")
+        void memberNickname_cacheHit_skipsMemberCall() {
+            given(memberClient.getMemberProfile(1L))
+                    .willReturn(ApiResponse.onSuccess(SuccessCode.OK, profile(1L, "여행자")));
+
+            memberClientAdapter.getMemberNickname(1L);
+            String second = memberClientAdapter.getMemberNickname(1L);
+
+            assertThat(second).isEqualTo("여행자");
+            verify(memberClient, times(1)).getMemberProfile(1L);
+        }
+
+        @Test
+        @DisplayName("목록: 모두 캐시에 있으면 member-service를 부르지 않는다")
+        void nicknameMap_allHit_skipsMemberCall() {
+            memberNicknameCache.put(1L, "여행자", memberNicknameCache.version());
+            memberNicknameCache.put(2L, "산책가", memberNicknameCache.version());
+
+            Map<Long, String> result = memberClientAdapter.getNicknameMap(Set.of(1L, 2L));
+
+            assertThat(result).containsExactlyInAnyOrderEntriesOf(Map.of(1L, "여행자", 2L, "산책가"));
+            verify(memberClient, never()).getMemberProfiles(anySet());
+        }
+
+        @Test
+        @DisplayName("목록: 일부만 캐시에 있으면 없는 회원만 member-service에 묻고, 받은 닉네임을 캐시에 넣는다")
+        void nicknameMap_partialHit_fetchesOnlyMissing() {
+            memberNicknameCache.put(1L, "여행자", memberNicknameCache.version());
+            given(memberClient.getMemberProfiles(Set.of(2L, 3L)))
+                    .willReturn(ApiResponse.onSuccess(SuccessCode.OK, List.of(profile(2L, "산책가"))));
+
+            Map<Long, String> result = memberClientAdapter.getNicknameMap(Set.of(1L, 2L, 3L));
+
+            assertThat(result).containsExactlyInAnyOrderEntriesOf(Map.of(1L, "여행자", 2L, "산책가", 3L, DEFAULT_NICKNAME));
+            verify(memberClient).getMemberProfiles(Set.of(2L, 3L));
+            assertThat(memberNicknameCache.get(2L)).isEqualTo("산책가");
+            // 응답에 없어 기본 닉네임으로 채운 회원은 캐시에 넣지 않는다
+            assertThat(memberNicknameCache.get(3L)).isNull();
+        }
+
+        @Test
+        @DisplayName("상세: 장애로 받은 기본 닉네임은 캐시에 넣지 않아, 복구 뒤 바로 실제 닉네임을 받는다")
+        void memberNickname_fallbackNotCached() {
+            given(memberClient.getMemberProfile(1L))
+                    .willThrow(serviceException(503))
+                    .willReturn(ApiResponse.onSuccess(SuccessCode.OK, profile(1L, "여행자")));
+
+            assertThat(memberClientAdapter.getMemberNickname(1L)).isEqualTo(DEFAULT_NICKNAME);
+            assertThat(memberClientAdapter.getMemberNickname(1L)).isEqualTo("여행자");
+            verify(memberClient, times(2)).getMemberProfile(1L);
+        }
+
+        @Test
+        @DisplayName("목록: 장애로 받은 기본 닉네임은 캐시에 넣지 않는다")
+        void nicknameMap_fallbackNotCached() {
+            given(memberClient.getMemberProfiles(anySet())).willThrow(retryableException());
+
+            memberClientAdapter.getNicknameMap(Set.of(1L, 2L));
+
+            assertThat(memberNicknameCache.getAll(Set.of(1L, 2L))).isEmpty();
+        }
+
+        @Test
+        @DisplayName("상세: member 조회 중에 닉네임이 바뀌어 캐시가 지워지면, 그 조회 결과(수정 전 닉네임)는 저장하지 않는다")
+        void memberNickname_evictedDuringFetch_notCached() {
+            given(memberClient.getMemberProfile(1L)).willAnswer(invocation -> {
+                memberNicknameCache.evict(1L); // 다른 요청의 닉네임 변경이 이 조회보다 먼저 끝남
+                return ApiResponse.onSuccess(SuccessCode.OK, profile(1L, "수정 전 닉네임"));
+            });
+
+            assertThat(memberClientAdapter.getMemberNickname(1L)).isEqualTo("수정 전 닉네임");
+            assertThat(memberNicknameCache.get(1L)).isNull();
+        }
+
+        @Test
+        @DisplayName("목록: member 조회 중에 캐시가 지워지면 그 조회 결과는 저장하지 않는다")
+        void nicknameMap_evictedDuringFetch_notCached() {
+            given(memberClient.getMemberProfiles(anySet())).willAnswer(invocation -> {
+                memberNicknameCache.evict(1L);
+                return ApiResponse.onSuccess(SuccessCode.OK, List.of(profile(1L, "수정 전 닉네임"), profile(2L, "산책가")));
+            });
+
+            memberClientAdapter.getNicknameMap(Set.of(1L, 2L));
+
+            assertThat(memberNicknameCache.getAll(Set.of(1L, 2L))).isEmpty();
+        }
+
+        @Test
+        @DisplayName("회원 정보 수정이 성공하면 그 회원의 캐시 항목을 지운다")
+        void updateMember_evicts() {
+            memberNicknameCache.put(1L, "여행자", memberNicknameCache.version());
+            given(memberClient.updateMember(any()))
+                    .willReturn(ApiResponse.onSuccess(
+                            SuccessCode.OK, new MemberClientResponse.UpdateDTO(1L, Instant.now())));
+
+            memberClientAdapter.updateMember(null);
+
+            assertThat(memberNicknameCache.get(1L)).isNull();
+        }
+
+        @Test
+        @DisplayName("회원 정보 수정이 실패하면 캐시 항목을 그대로 둔다")
+        void updateMember_failure_keepsCache() {
+            memberNicknameCache.put(1L, "여행자", memberNicknameCache.version());
+            WebApiServiceException exception = serviceException(400);
+            given(memberClient.updateMember(any())).willThrow(exception);
+
+            assertThatThrownBy(() -> memberClientAdapter.updateMember(null)).isSameAs(exception);
+            assertThat(memberNicknameCache.get(1L)).isEqualTo("여행자");
+        }
+
+        @Test
+        @DisplayName("탈퇴가 성공하면 그 회원의 캐시 항목을 지운다")
+        void withdraw_evicts() {
+            memberNicknameCache.put(1L, "여행자", memberNicknameCache.version());
+            given(memberClient.withdraw())
+                    .willReturn(ApiResponse.onSuccess(
+                            SuccessCode.OK, new MemberClientResponse.WithdrawDTO(1L, Instant.now())));
+
+            memberClientAdapter.withdraw();
+
+            assertThat(memberNicknameCache.get(1L)).isNull();
         }
     }
 

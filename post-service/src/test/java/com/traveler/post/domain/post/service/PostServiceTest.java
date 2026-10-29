@@ -19,14 +19,17 @@ import com.traveler.post.domain.post.dto.event.PostEvent;
 import com.traveler.post.domain.post.dto.request.PostRequest;
 import com.traveler.post.domain.post.entity.Post;
 import com.traveler.post.domain.post.entity.PostImage;
+import com.traveler.post.domain.post.entity.PostStats;
 import com.traveler.post.domain.post.entity.TravelPlace;
 import com.traveler.post.domain.post.enums.Category;
 import com.traveler.post.domain.post.enums.Region;
 import com.traveler.post.domain.post.mapper.PostMapper;
 import com.traveler.post.domain.post.mapper.TravelPlaceMapper;
 import com.traveler.post.domain.post.repository.PostRepository;
+import com.traveler.post.domain.post.repository.PostStatsRepository;
 import com.traveler.post.domain.post.support.PostHardDeleter;
 import com.traveler.post.domain.post.support.PostImageKeyValidator;
+import com.traveler.post.domain.post.support.PostStatsSlots;
 import com.traveler.post.global.exception.PostServiceException;
 import com.traveler.post.global.exception.code.PostServiceErrorCode;
 import com.traveler.post.global.s3.S3Service;
@@ -35,6 +38,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -45,6 +49,8 @@ class PostServiceTest {
     private static final Long POST_ID = 10L;
 
     private final PostRepository postRepository = mock(PostRepository.class);
+    private final PostStatsRepository postStatsRepository = mock(PostStatsRepository.class);
+    private final PostStatsSlots postStatsSlots = mock(PostStatsSlots.class);
     private final PostMapper postMapper = mock(PostMapper.class);
     private final TravelPlaceMapper travelPlaceMapper = mock(TravelPlaceMapper.class);
     private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
@@ -54,6 +60,8 @@ class PostServiceTest {
 
     private final PostService postService = new PostService(
             postRepository,
+            postStatsRepository,
+            postStatsSlots,
             postMapper,
             travelPlaceMapper,
             eventPublisher,
@@ -135,7 +143,14 @@ class PostServiceTest {
 
         verify(s3Service).findObjectSize(MEMBER_1_KEY);
         verify(s3Service).findObjectSize(MEMBER_1_KEY_2);
-        verify(postRepository).save(any());
+        ArgumentCaptor<Post> savedPost = ArgumentCaptor.forClass(Post.class);
+        verify(postRepository).save(savedPost.capture());
+        // 저장한 게시글의 통계 슬롯 8행을 함께 만든다(슬롯이 없으면 좋아요·댓글이 실패한다)
+        ArgumentCaptor<List<PostStats>> slots = ArgumentCaptor.captor();
+        verify(postStatsRepository).saveAll(slots.capture());
+        assertThat(slots.getValue()).hasSize(PostStats.SLOT_COUNT).allSatisfy(slot -> assertThat(slot.getPost())
+                .isSameAs(savedPost.getValue()));
+        assertThat(slots.getValue()).extracting(slot -> slot.getId().getSlot()).containsExactly(0, 1, 2, 3, 4, 5, 6, 7);
     }
 
     @Test

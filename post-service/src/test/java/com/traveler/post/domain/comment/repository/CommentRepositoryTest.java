@@ -28,7 +28,9 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
             "spring.datasource.password=",
             "spring.jpa.database=h2",
             "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
-            "spring.jpa.hibernate.ddl-auto=create-drop"
+            "spring.jpa.hibernate.ddl-auto=create-drop",
+            // 운영 설정의 MySQL 전용 락 대기 제한(SET SESSION innodb_lock_wait_timeout)은 H2에서 실행되지 않는다
+            "spring.datasource.hikari.connection-init-sql=SELECT 1"
         })
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import(CommentRepositoryTest.AuditingConfig.class)

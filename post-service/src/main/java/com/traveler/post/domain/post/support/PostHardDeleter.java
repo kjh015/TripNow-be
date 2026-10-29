@@ -3,6 +3,7 @@ package com.traveler.post.domain.post.support;
 import com.traveler.post.domain.comment.repository.CommentRepository;
 import com.traveler.post.domain.like.repository.LikeRepository;
 import com.traveler.post.domain.post.repository.PostRepository;
+import com.traveler.post.domain.post.repository.PostStatsRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class PostHardDeleter {
     private final PostRepository postRepository;
+    private final PostStatsRepository postStatsRepository;
     private final LikeRepository likeRepository;
     private final CommentRepository commentRepository;
 
@@ -36,6 +38,7 @@ public class PostHardDeleter {
         postRepository.hardDeletePostImagesByPostIds(postIds);
         likeRepository.hardDeleteLikesByPostIds(postIds);
         commentRepository.hardDeleteCommentsByPostIds(postIds);
+        postStatsRepository.hardDeleteByPostIds(postIds);
         postRepository.hardDeletePostsByIds(postIds);
         if (!travelPlaceIds.isEmpty()) {
             postRepository.hardDeleteTravelPlacesByIds(travelPlaceIds);

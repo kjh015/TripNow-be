@@ -15,6 +15,7 @@ import com.traveler.common.api.auth.context.UserContextHolder;
 import com.traveler.common.core.auth.AuthConstants;
 import com.traveler.common.core.auth.UserContext;
 import com.traveler.web.domain.member.adapter.MemberClientAdapter;
+import com.traveler.web.domain.member.cache.MemberNicknameCache;
 import com.traveler.web.domain.member.client.MemberClient;
 import com.traveler.web.global.exception.WebApiServiceException;
 import com.traveler.web.global.exception.code.WebApiServiceErrorCode;
@@ -65,7 +66,12 @@ class DownstreamCircuitBreakerWireMockTest {
         CircuitBreakerAutoConfiguration.class
     })
     @EnableFeignClients(clients = MemberClient.class)
-    @Import({MemberClientAdapter.class, DownstreamCallExecutor.class, CircuitBreakerStateLogger.class})
+    @Import({
+        MemberClientAdapter.class,
+        DownstreamCallExecutor.class,
+        MemberNicknameCache.class,
+        CircuitBreakerStateLogger.class
+    })
     static class FeignTestConfig {}
 
     @DynamicPropertySource

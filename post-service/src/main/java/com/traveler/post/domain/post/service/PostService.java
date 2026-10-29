@@ -3,16 +3,20 @@ package com.traveler.post.domain.post.service;
 import com.traveler.common.core.code.ErrorCode;
 import com.traveler.post.domain.post.dto.request.PostRequest;
 import com.traveler.post.domain.post.dto.response.PostResponse;
+import com.traveler.post.domain.post.dto.result.PostStatsSummary;
+import com.traveler.post.domain.post.dto.result.PostStatsSyncBatch;
 import com.traveler.post.domain.post.entity.Post;
+import com.traveler.post.domain.post.entity.PostStats;
 import com.traveler.post.domain.post.entity.TravelPlace;
 import com.traveler.post.domain.post.mapper.PostMapper;
 import com.traveler.post.domain.post.mapper.TravelPlaceMapper;
 import com.traveler.post.domain.post.repository.PostRepository;
+import com.traveler.post.domain.post.repository.PostStatsRepository;
 import com.traveler.post.domain.post.support.PostHardDeleter;
 import com.traveler.post.domain.post.support.PostImageKeyValidator;
+import com.traveler.post.domain.post.support.PostStatsSlots;
 import com.traveler.post.global.exception.PostServiceException;
 import com.traveler.post.global.exception.code.PostServiceErrorCode;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,6 +34,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Transactional
 public class PostService {
     private final PostRepository postRepository;
+    private final PostStatsRepository postStatsRepository;
+    private final PostStatsSlots postStatsSlots;
     private final PostMapper postMapper;
     private final TravelPlaceMapper travelPlaceMapper;
     private final ApplicationEventPublisher eventPublisher;
@@ -50,6 +56,7 @@ public class PostService {
             post.setImages(dto.images());
 
             Post savedPost = postRepository.save(post);
+            postStatsRepository.saveAll(PostStats.createSlots(savedPost));
 
             eventPublisher.publishEvent(postMapper.toCreatedEvent(savedPost));
 
@@ -129,24 +136,23 @@ public class PostService {
         }
     }
 
-    public void flushViewCountsToDB(Map<Object, Object> viewCountMap) {
-        if (viewCountMap == null || viewCountMap.isEmpty()) return;
+    /**
+     * 조회수를 DB에 더하고, 조회수·좋아요·댓글이 바뀐 게시글의 통계를 검색 서버로 보낸다(통계 동기화 스케줄러, 5초마다).
+     *
+     * <p>통계는 커밋된 슬롯 합계라 정확하다. syncedAt(이번 발행 시각)을 실어, 검색 서버가 이보다 오래된 통계(재전송 등)로 덮어쓰지
+     * 않게 한다.
+     */
+    public void syncStats(PostStatsSyncBatch batch) {
+        batch.viewCounts().forEach(postRepository::incrementViewCount);
 
-        List<Long> postIds = new ArrayList<>(viewCountMap.size());
+        Set<Long> postIds = batch.postIds();
+        if (postIds.isEmpty()) return;
 
-        // 게시글별 조회수 벌크 증가
-        for (Map.Entry<Object, Object> entry : viewCountMap.entrySet()) {
-            Long postId = Long.valueOf(String.valueOf(entry.getKey()));
-            Long increment = Long.valueOf(String.valueOf(entry.getValue()));
-
-            postRepository.incrementViewCount(postId, increment);
-            postIds.add(postId);
-        }
-
-        // 증가가 반영된 최신 상태를 한 번에 조회하여 검색 서버 동기화 이벤트 발행
-        List<Post> updatedPosts = postRepository.findAllById(postIds);
-        for (Post post : updatedPosts) {
-            eventPublisher.publishEvent(postMapper.toStatUpdatedEvent(post));
+        long syncedAt = System.currentTimeMillis();
+        Map<Long, PostStatsSummary> statsByPostId = postStatsSlots.summarizeByPostId(postIds);
+        // 삭제된 게시글은 검색 문서가 없어 제외(@SQLRestriction)
+        for (Post post : postRepository.findAllById(postIds)) {
+            eventPublisher.publishEvent(postMapper.toStatUpdatedEvent(post, statsByPostId.get(post.getId()), syncedAt));
         }
     }
 }

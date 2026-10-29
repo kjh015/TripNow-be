@@ -13,7 +13,10 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 @EnableAsync
 public class AsyncConfig {
 
-    @Bean(name = "outboxTaskExecutor")
+    public static final String OUTBOX_TASK_EXECUTOR = "outboxTaskExecutor";
+    public static final String OUTBOX_STATUS_EXECUTOR = "outboxStatusExecutor";
+
+    @Bean(name = OUTBOX_TASK_EXECUTOR)
     public Executor outboxTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         // 핵심 스레드 수: 항상 유지되는 스레드
@@ -33,6 +36,29 @@ public class AsyncConfig {
         // 종료 시 대기 설정
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(60);
+
+        executor.initialize();
+        return executor;
+    }
+
+    /**
+     * Kafka 전송 완료 후 Outbox 상태(SENT/FAILED) 갱신을 맡는다.
+     * 프로듀서 전송 스레드(1개)가 DB 커밋을 기다리면 뒤 메시지 전송도 멈추므로 갱신을 이 풀로 넘긴다.
+     */
+    @Bean(name = OUTBOX_STATUS_EXECUTOR)
+    public Executor outboxStatusExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        // 갱신마다 커넥션 1개를 쓰므로 Hikari 풀(10개)의 절반 이하로 두어 요청 처리 몫을 남긴다
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(2000);
+        executor.setThreadNamePrefix("outbox-status-");
+        // 큐가 가득 차면 호출 스레드(프로듀서 전송 스레드)에서 직접 갱신한다. 개선 전과 같은 동작이고 갱신이 빠지지 않는다
+        executor.setRejectedExecutionHandler(new ThrottledRejectionLoggingHandler(
+                "OutboxStatusExecutor", new ThreadPoolExecutor.CallerRunsPolicy()));
+        // 종료 시 남은 갱신을 마친다. 못 마친 행은 INIT로 남아 재시도 스케줄러가 다시 보낸다
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
 
         executor.initialize();
         return executor;
