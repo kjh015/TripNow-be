@@ -64,6 +64,9 @@ dependencies {
     // Redis
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
+    // 회원 닉네임 로컬 캐시 (MemberNicknameCache)
+    implementation 'com.github.ben-manes.caffeine:caffeine'
+
     // OpenFeign
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
     implementation 'io.github.openfeign:feign-hc5'

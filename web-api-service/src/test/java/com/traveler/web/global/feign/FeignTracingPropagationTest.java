@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.traveler.web.domain.member.adapter.MemberClientAdapter;
+import com.traveler.web.domain.member.cache.MemberNicknameCache;
 import com.traveler.web.domain.member.client.MemberClient;
 import com.traveler.web.global.resilience.DownstreamCallExecutor;
 import io.github.resilience4j.springboot3.circuitbreaker.autoconfigure.CircuitBreakerAutoConfiguration;
@@ -64,7 +65,7 @@ class FeignTracingPropagationTest {
         CircuitBreakerAutoConfiguration.class
     })
     @EnableFeignClients(clients = MemberClient.class)
-    @Import({MemberClientAdapter.class, DownstreamCallExecutor.class})
+    @Import({MemberClientAdapter.class, DownstreamCallExecutor.class, MemberNicknameCache.class})
     static class FeignTracingTestConfig {}
 
     @DynamicPropertySource
