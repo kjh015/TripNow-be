@@ -206,8 +206,8 @@ class MemberClientAdapterTest {
         @Test
         @DisplayName("목록: 모두 캐시에 있으면 member-service를 부르지 않는다")
         void nicknameMap_allHit_skipsMemberCall() {
-            memberNicknameCache.put(1L, "여행자");
-            memberNicknameCache.put(2L, "산책가");
+            memberNicknameCache.put(1L, "여행자", memberNicknameCache.version());
+            memberNicknameCache.put(2L, "산책가", memberNicknameCache.version());
 
             Map<Long, String> result = memberClientAdapter.getNicknameMap(Set.of(1L, 2L));
 
@@ -218,7 +218,7 @@ class MemberClientAdapterTest {
         @Test
         @DisplayName("목록: 일부만 캐시에 있으면 없는 회원만 member-service에 묻고, 받은 닉네임을 캐시에 넣는다")
         void nicknameMap_partialHit_fetchesOnlyMissing() {
-            memberNicknameCache.put(1L, "여행자");
+            memberNicknameCache.put(1L, "여행자", memberNicknameCache.version());
             given(memberClient.getMemberProfiles(Set.of(2L, 3L)))
                     .willReturn(ApiResponse.onSuccess(SuccessCode.OK, List.of(profile(2L, "산책가"))));
 
@@ -254,9 +254,34 @@ class MemberClientAdapterTest {
         }
 
         @Test
+        @DisplayName("상세: member 조회 중에 닉네임이 바뀌어 캐시가 지워지면, 그 조회 결과(수정 전 닉네임)는 저장하지 않는다")
+        void memberNickname_evictedDuringFetch_notCached() {
+            given(memberClient.getMemberProfile(1L)).willAnswer(invocation -> {
+                memberNicknameCache.evict(1L); // 다른 요청의 닉네임 변경이 이 조회보다 먼저 끝남
+                return ApiResponse.onSuccess(SuccessCode.OK, profile(1L, "수정 전 닉네임"));
+            });
+
+            assertThat(memberClientAdapter.getMemberNickname(1L)).isEqualTo("수정 전 닉네임");
+            assertThat(memberNicknameCache.get(1L)).isNull();
+        }
+
+        @Test
+        @DisplayName("목록: member 조회 중에 캐시가 지워지면 그 조회 결과는 저장하지 않는다")
+        void nicknameMap_evictedDuringFetch_notCached() {
+            given(memberClient.getMemberProfiles(anySet())).willAnswer(invocation -> {
+                memberNicknameCache.evict(1L);
+                return ApiResponse.onSuccess(SuccessCode.OK, List.of(profile(1L, "수정 전 닉네임"), profile(2L, "산책가")));
+            });
+
+            memberClientAdapter.getNicknameMap(Set.of(1L, 2L));
+
+            assertThat(memberNicknameCache.getAll(Set.of(1L, 2L))).isEmpty();
+        }
+
+        @Test
         @DisplayName("회원 정보 수정이 성공하면 그 회원의 캐시 항목을 지운다")
         void updateMember_evicts() {
-            memberNicknameCache.put(1L, "여행자");
+            memberNicknameCache.put(1L, "여행자", memberNicknameCache.version());
             given(memberClient.updateMember(any()))
                     .willReturn(ApiResponse.onSuccess(
                             SuccessCode.OK, new MemberClientResponse.UpdateDTO(1L, Instant.now())));
@@ -269,7 +294,7 @@ class MemberClientAdapterTest {
         @Test
         @DisplayName("회원 정보 수정이 실패하면 캐시 항목을 그대로 둔다")
         void updateMember_failure_keepsCache() {
-            memberNicknameCache.put(1L, "여행자");
+            memberNicknameCache.put(1L, "여행자", memberNicknameCache.version());
             WebApiServiceException exception = serviceException(400);
             given(memberClient.updateMember(any())).willThrow(exception);
 
@@ -280,7 +305,7 @@ class MemberClientAdapterTest {
         @Test
         @DisplayName("탈퇴가 성공하면 그 회원의 캐시 항목을 지운다")
         void withdraw_evicts() {
-            memberNicknameCache.put(1L, "여행자");
+            memberNicknameCache.put(1L, "여행자", memberNicknameCache.version());
             given(memberClient.withdraw())
                     .willReturn(ApiResponse.onSuccess(
                             SuccessCode.OK, new MemberClientResponse.WithdrawDTO(1L, Instant.now())));

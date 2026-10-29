@@ -88,9 +88,10 @@ public class MemberClientAdapter {
             return nicknameMap;
         }
 
+        long cacheVersion = memberNicknameCache.version();
         Map<Long, String> fetched = downstreamCallExecutor.executeOrDefault(
                 DownstreamServiceNames.MEMBER, () -> fetchNicknameMap(missingIds), Collections.emptyMap());
-        memberNicknameCache.putAll(fetched);
+        memberNicknameCache.putAll(fetched, cacheVersion);
 
         missingIds.forEach(memberId -> nicknameMap.put(memberId, fetched.getOrDefault(memberId, DEFAULT_NICKNAME)));
         return nicknameMap;
@@ -103,6 +104,7 @@ public class MemberClientAdapter {
             return cached;
         }
 
+        long cacheVersion = memberNicknameCache.version();
         String nickname = downstreamCallExecutor.executeOrDefault(
                 DownstreamServiceNames.MEMBER,
                 () -> {
@@ -114,7 +116,7 @@ public class MemberClientAdapter {
         if (nickname == null) {
             return DEFAULT_NICKNAME;
         }
-        memberNicknameCache.put(memberId, nickname);
+        memberNicknameCache.put(memberId, nickname, cacheVersion);
         return nickname;
     }
 

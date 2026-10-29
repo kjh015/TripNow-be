@@ -48,7 +48,12 @@ public class Outbox extends BaseEntity {
         this.sentAt = Instant.now();
     }
 
+    // 전송 완료 콜백은 상태 갱신 풀의 대기열을 거쳐 늦게 올 수 있다. 그사이 재시도가 SENT로 바꿨으면
+    // 늦은 실패 결과로 되돌리지 않는다(되돌리면 재시도 스케줄러가 한 번 더 발행한다)
     public void failed() {
+        if (this.status == OutboxStatus.SENT) {
+            return;
+        }
         this.status = OutboxStatus.FAILED;
     }
 

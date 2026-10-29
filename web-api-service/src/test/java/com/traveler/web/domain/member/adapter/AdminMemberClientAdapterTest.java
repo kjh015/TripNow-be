@@ -38,7 +38,7 @@ class AdminMemberClientAdapterTest {
         memberNicknameCache = new MemberNicknameCache();
         adminMemberClientAdapter = new AdminMemberClientAdapter(
                 adminMemberClient, new DownstreamCallExecutor(registry), memberNicknameCache);
-        memberNicknameCache.put(1L, "여행자");
+        memberNicknameCache.put(1L, "여행자", memberNicknameCache.version());
     }
 
     @Test
