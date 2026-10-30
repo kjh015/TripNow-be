@@ -121,6 +121,34 @@ class LikeCommentConcurrencyIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("같은 댓글을 사용자 삭제와 탈퇴 정리가 동시에 지워도 통계는 한 번만 내려간다")
+    void concurrentDeleteOfSameComment() throws Exception {
+        Long postId = savePost();
+        long memberId = 3000L;
+        commentService.createComment(3001L, new CommentRequest.CreateDTO(postId, "남는 댓글", 4));
+        Long commentId = commentService
+                .createComment(memberId, new CommentRequest.CreateDTO(postId, "지울 댓글", 5))
+                .commentId();
+
+        // 첫 작업만 탈퇴 정리, 나머지는 사용자 삭제. 둘째부터는 이미 지워졌으므로 COMMENT_NOT_FOUND가 정상이다
+        List<Throwable> errors = runConcurrently(i -> () -> {
+            if (i == 0) {
+                commentService.deleteByMember(memberId, 100);
+            } else {
+                commentService.deleteComment(commentId, memberId);
+            }
+        });
+
+        assertThat(errors).allSatisfy(error -> assertThat(error)
+                .isInstanceOf(PostServiceException.class)
+                .extracting("code")
+                .isEqualTo(PostServiceErrorCode.COMMENT_NOT_FOUND));
+        PostStatsSummary stats = postStatsSlots.summarize(postId);
+        assertThat(stats.commentCount()).isEqualTo(1);
+        assertThat(stats.starSum()).isEqualTo(4);
+    }
+
+    @Test
     @DisplayName("좋아요 추가·취소를 서로 다른 회원이 동시에 하면 likeCount와 like 행 수가 같다")
     void concurrentAddAndRemove() throws Exception {
         Long postId = savePost();

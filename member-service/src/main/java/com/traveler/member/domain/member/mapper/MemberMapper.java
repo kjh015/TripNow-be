@@ -1,10 +1,14 @@
 package com.traveler.member.domain.member.mapper;
 
+import com.traveler.member.domain.member.dto.event.MemberEvent;
+import com.traveler.member.domain.member.dto.message.MemberMessage;
 import com.traveler.member.domain.member.dto.request.MemberRequest;
 import com.traveler.member.domain.member.dto.response.AdminMemberResponse;
 import com.traveler.member.domain.member.dto.response.MemberResponse;
 import com.traveler.member.domain.member.entity.Member;
+import com.traveler.member.domain.member.entity.MemberWithdrawal;
 import com.traveler.member.domain.member.enums.AvailabilityType;
+import com.traveler.member.domain.member.enums.WithdrawalReason;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
@@ -47,7 +51,23 @@ public interface MemberMapper {
     @Mapping(source = "member.roleTypes", target = "roles")
     AdminMemberResponse.ListDTO toListDTO(Member member);
 
-    @Mapping(source = "id", target = "memberId")
+    @Mapping(source = "member.id", target = "memberId")
     @Mapping(source = "member.roleTypes", target = "roles")
-    AdminMemberResponse.DetailDTO toDetailDTO(Member member);
+    @Mapping(source = "member.createdAt", target = "createdAt")
+    @Mapping(source = "member.updatedAt", target = "updatedAt")
+    @Mapping(source = "member.deleted", target = "isDeleted")
+    AdminMemberResponse.DetailDTO toDetailDTO(Member member, MemberWithdrawal withdrawal);
+
+    @Mapping(source = "createdAt", target = "withdrawnAt")
+    AdminMemberResponse.PendingWithdrawalDTO toPendingWithdrawalDTO(MemberWithdrawal withdrawal);
+
+    // Message
+    @Mapping(source = "member.id", target = "memberId")
+    @Mapping(source = "member.deletedAt", target = "withdrawnAt")
+    MemberMessage.WithdrawnDTO toWithdrawnMsgDTO(Member member, WithdrawalReason reason);
+
+    // Event
+    default MemberEvent.Withdrawn toWithdrawnEvent(Member member, WithdrawalReason reason) {
+        return new MemberEvent.Withdrawn(toWithdrawnMsgDTO(member, reason));
+    }
 }

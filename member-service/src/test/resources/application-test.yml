@@ -11,6 +11,10 @@ spring:
   data:
     redis:
       host: localhost
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: member-service-test
 
 eureka:
   client:

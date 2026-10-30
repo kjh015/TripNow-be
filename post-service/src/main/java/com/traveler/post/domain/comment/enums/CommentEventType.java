@@ -9,7 +9,8 @@ import lombok.RequiredArgsConstructor;
 public enum CommentEventType implements OutboxEventType {
     CREATED("COMMENT", "CREATED", "comment-events"),
     UPDATED("COMMENT", "UPDATED", "comment-events"),
-    DELETED("COMMENT", "DELETED", "comment-events");
+    DELETED("COMMENT", "DELETED", "comment-events"),
+    BATCH_DELETED("COMMENT", "BATCH_DELETED", "comment-events");
 
     private final String aggregateType;
     private final String eventType;

@@ -1,6 +1,7 @@
 package com.traveler.post.domain.comment.dto.message;
 
 import java.time.Instant;
+import java.util.List;
 
 public final class CommentMessage {
 
@@ -14,4 +15,6 @@ public final class CommentMessage {
     public record UpdatedDTO(Long commentId, String content, Integer star, Instant updatedAt) {}
 
     public record DeletedDTO(Long commentId) {}
+
+    public record BatchDeletedDTO(Long postId, List<Long> commentIds) {}
 }

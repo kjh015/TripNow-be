@@ -10,6 +10,7 @@ import com.traveler.search.domain.comment.document.CommentDocument;
 import com.traveler.search.domain.comment.dto.message.CommentSearchMessage;
 import com.traveler.search.domain.comment.repository.CommentDocumentRepository;
 import com.traveler.search.testsupport.IntegrationTestSupport;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,5 +58,26 @@ class CommentSearchCommandServiceIntegrationTest extends IntegrationTestSupport 
                     assertThat(((ElasticsearchException) cause).status()).isEqualTo(404);
                 });
         assertThat(commentDocumentRepository.findById(commentId)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("묶음 삭제는 지정한 문서만 지우고, 없는 문서가 섞여 있거나 두 번 받아도 예외가 없다")
+    void deleteDocuments() {
+        long first = nextId();
+        long second = nextId();
+        long kept = nextId();
+        for (long commentId : List.of(first, second, kept)) {
+            commandService.createDocument(
+                    new CommentSearchMessage.CreatedDTO(commentId, 10L, 1L, "댓글", 4, READABLE_TIMESTAMP));
+        }
+        CommentSearchMessage.BatchDeletedDTO batch =
+                new CommentSearchMessage.BatchDeletedDTO(10L, List.of(first, second, nextId()));
+
+        commandService.deleteDocuments(batch);
+        commandService.deleteDocuments(batch);
+
+        assertThat(commentDocumentRepository.findById(first)).isEmpty();
+        assertThat(commentDocumentRepository.findById(second)).isEmpty();
+        assertThat(commentDocumentRepository.findById(kept)).isPresent();
     }
 }

@@ -20,7 +20,11 @@ import org.hibernate.annotations.SQLRestriction;
 @SQLRestriction("is_deleted = false")
 @Table(
         name = "comment",
-        indexes = {@Index(name = "idx_comment_deleted_at_status", columnList = "is_deleted, deleted_at")})
+        indexes = {
+            @Index(name = "idx_comment_deleted_at_status", columnList = "is_deleted, deleted_at"),
+            // 탈퇴 회원의 댓글 정리(MemberWithdrawalHandler)
+            @Index(name = "idx_comment_member_id", columnList = "member_id")
+        })
 public class Comment extends BaseEntity {
 
     private Long memberId;

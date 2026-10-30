@@ -66,9 +66,10 @@ public class AdminCommentService {
 
         if (post.isDeleted()) {
             // 삭제된 게시물은 검색 문서가 없으므로 통계 갱신 없이 댓글 삭제 메시지만 발행
-            eventPublisher.publishEvent(new CommentEvent.AdminDeleted(commentMapper.toDeletedMsgDTO(comment)));
+            eventPublisher.publishEvent(
+                    new CommentEvent.AdminDeleted(commentMapper.toDeletedMsgDTO(comment), post.getId()));
         } else {
-            postStatsSlots.getRandomForUpdate(post.getId()).removeComment(comment.getStar());
+            postStatsSlots.getRandom(post.getId()).removeComment(comment.getStar());
             eventPublisher.publishEvent(commentMapper.toDeletedEvent(comment));
         }
 
@@ -97,7 +98,7 @@ public class AdminCommentService {
                 .event(RESTORE_COMMENT, commentId)
                 .detail("postId", post.getId())
                 .log();
-        postStatsSlots.getRandomForUpdate(post.getId()).addComment(comment.getStar());
+        postStatsSlots.getRandom(post.getId()).addComment(comment.getStar());
 
         // 검색 문서 재색인(Created) 및 게시글 통계 변경
         eventPublisher.publishEvent(commentMapper.toCreatedEvent(comment));

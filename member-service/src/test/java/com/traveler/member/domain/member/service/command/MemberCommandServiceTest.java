@@ -16,11 +16,14 @@ import com.traveler.member.domain.auth.repository.RefreshTokenRepository;
 import com.traveler.member.domain.auth.repository.TokenBlacklistRepository;
 import com.traveler.member.domain.auth.support.AuthTokenRevoker;
 import com.traveler.member.domain.auth.support.JwtTokenProvider;
+import com.traveler.member.domain.member.dto.event.MemberEvent;
+import com.traveler.member.domain.member.dto.message.MemberMessage;
 import com.traveler.member.domain.member.dto.request.MemberRequest;
 import com.traveler.member.domain.member.dto.response.MemberResponse;
 import com.traveler.member.domain.member.entity.Member;
 import com.traveler.member.domain.member.enums.Gender;
 import com.traveler.member.domain.member.enums.RoleType;
+import com.traveler.member.domain.member.enums.WithdrawalReason;
 import com.traveler.member.domain.member.mapper.MemberMapper;
 import com.traveler.member.domain.member.repository.MemberRepository;
 import com.traveler.member.global.exception.MemberServiceException;
@@ -34,6 +37,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -52,12 +56,14 @@ class MemberCommandServiceTest {
     private final RefreshTokenRepository refreshTokenRepository = mock(RefreshTokenRepository.class);
     private final TokenBlacklistRepository tokenBlacklistRepository = mock(TokenBlacklistRepository.class);
     private final JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
+    private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
 
     private final MemberCommandService memberCommandService = new MemberCommandService(
             memberRepository,
             memberMapper,
             passwordEncoder,
-            new AuthTokenRevoker(refreshTokenRepository, tokenBlacklistRepository, jwtTokenProvider));
+            new AuthTokenRevoker(refreshTokenRepository, tokenBlacklistRepository, jwtTokenProvider),
+            eventPublisher);
 
     private Member member;
 
@@ -68,6 +74,11 @@ class MemberCommandServiceTest {
         given(memberMapper.toWithdrawDTO(any())).willAnswer(invocation -> {
             Member m = invocation.getArgument(0);
             return new MemberResponse.WithdrawDTO(m.getId(), m.getDeletedAt());
+        });
+        given(memberMapper.toWithdrawnEvent(any(), any())).willAnswer(invocation -> {
+            Member m = invocation.getArgument(0);
+            return new MemberEvent.Withdrawn(
+                    new MemberMessage.WithdrawnDTO(m.getId(), m.getDeletedAt(), invocation.getArgument(1)));
         });
         given(jwtTokenProvider.getRemainingExpirationTime(ACCESS_TOKEN)).willReturn(REMAINING_MILLIS);
     }
@@ -81,6 +92,29 @@ class MemberCommandServiceTest {
         assertThat(result.memberId()).isEqualTo(MEMBER_ID);
         verify(refreshTokenRepository).deleteByMemberId(MEMBER_ID);
         verify(tokenBlacklistRepository).save(TokenHashUtil.hash(ACCESS_TOKEN), REMAINING_MILLIS);
+    }
+
+    @Test
+    @DisplayName("탈퇴하면 본인 탈퇴(USER) 이벤트를 발행한다")
+    void withdraw_publishesWithdrawnEvent() {
+        memberCommandService.withdraw(MEMBER_ID, ACCESS_TOKEN);
+
+        verify(eventPublisher)
+                .publishEvent(new MemberEvent.Withdrawn(
+                        new MemberMessage.WithdrawnDTO(MEMBER_ID, member.getDeletedAt(), WithdrawalReason.USER)));
+    }
+
+    @Test
+    @DisplayName("이미 탈퇴한 회원이 다시 탈퇴 요청하면 MEMBER_ALREADY_DELETED로 실패하고 이벤트를 다시 보내지 않는다")
+    void withdraw_alreadyDeleted_fails() {
+        member.delete();
+
+        assertThatThrownBy(() -> memberCommandService.withdraw(MEMBER_ID, ACCESS_TOKEN))
+                .isInstanceOf(MemberServiceException.class)
+                .extracting("code")
+                .isEqualTo(MemberServiceErrorCode.MEMBER_ALREADY_DELETED);
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
+        verify(refreshTokenRepository, never()).deleteByMemberId(anyLong());
     }
 
     @Test

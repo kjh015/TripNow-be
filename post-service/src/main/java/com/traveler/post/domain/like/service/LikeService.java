@@ -10,8 +10,13 @@ import com.traveler.post.domain.post.support.PostStatsSlots;
 import com.traveler.post.global.exception.PostServiceException;
 import com.traveler.post.global.exception.code.PostServiceErrorCode;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,7 +49,7 @@ public class LikeService {
         Like like = likeRepository
                 .findByPostIdAndMemberId(postId, memberId)
                 .orElseThrow(() -> new IllegalStateException("방금 넣은 좋아요가 없다 postId=" + postId));
-        postStatsSlots.getRandomForUpdate(postId).addLike();
+        postStatsSlots.getRandom(postId).addLike();
 
         eventPublisher.publishEvent(likeMapper.toAddedEvent(like));
 
@@ -59,12 +64,35 @@ public class LikeService {
             if (likeRepository.deleteIfPresent(like.getId()) == 0) {
                 return;
             }
-            postStatsSlots.getRandomForUpdate(postId).removeLike();
+            postStatsSlots.getRandom(postId).removeLike();
 
             eventPublisher.publishEvent(likeMapper.toRemovedEvent(like));
         });
 
         return likeMapper.toStatsDTO(postStatsSlots.summarize(postId));
+    }
+
+    /**
+     * 탈퇴 회원의 좋아요를 최대 {@code limit}개까지 삭제하고 PostStats를 갱신한다. 삭제한 좋아요 수를 반환한다.
+     *
+     * <p>좋아요를 잠가 조회하므로 같은 메시지를 다시 처리하거나 사용자 취소와 겹쳐도 통계가 중복 반영되지 않는다.
+     * 관리자 복구 시 통계를 맞출 수 있도록 삭제된 게시글의 좋아요도 함께 삭제한다.
+     * 교착을 방지하기 위해 게시글 ID 순으로 통계 슬롯을 하나씩 잠그고, 취소 이벤트는 게시글별로 묶어 발행한다.
+     */
+    public int removeByMember(Long memberId, int limit) {
+        List<Like> likes = likeRepository.findByMemberIdOrderByIdAsc(memberId, Limit.of(limit));
+        if (likes.isEmpty()) {
+            return 0;
+        }
+        likeRepository.deleteAllByIdInBatch(likes.stream().map(Like::getId).toList());
+
+        Map<Long, List<Like>> removedByPostId = likes.stream()
+                .collect(Collectors.groupingBy(like -> like.getPost().getId(), TreeMap::new, Collectors.toList()));
+        removedByPostId.forEach((postId, removed) -> {
+            postStatsSlots.getRandom(postId).removeLikes(removed.size());
+            eventPublisher.publishEvent(likeMapper.toBatchRemovedEvent(postId, removed));
+        });
+        return likes.size();
     }
 
     // 소프트 삭제된 게시글은 @SQLRestriction으로 걸러져 없는 게시글로 본다

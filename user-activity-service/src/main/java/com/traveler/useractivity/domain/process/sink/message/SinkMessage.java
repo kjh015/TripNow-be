@@ -7,5 +7,5 @@ public final class SinkMessage {
     }
 
     // 조회수 증가용 메시지 포맷
-    public record PostViewedDTO(Long postId, String traceId) {}
+    public record PostViewedDTO(Long postId) {}
 }

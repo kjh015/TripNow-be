@@ -41,7 +41,7 @@ public class PostCommandConsumer {
 
         switch (eventType) {
             case "IMAGE_DELETED", "IMAGE_BATCH_DELETED" -> {
-                var dto = objectMapper.readValue(payload, PostMessage.ImagesDeleteDTO.class);
+                PostMessage.ImagesDeleteDTO dto = objectMapper.readValue(payload, PostMessage.ImagesDeleteDTO.class);
                 s3Service.deleteFilesByUrls(dto.imageKeys());
             }
             default -> log.warn("지원하지 않는 커맨드 타입입니다: {}", eventType);

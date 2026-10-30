@@ -9,6 +9,7 @@ import com.traveler.useractivity.global.exception.UserActivityServiceException;
 import com.traveler.useractivity.global.kafka.KafkaProducer;
 import com.traveler.useractivity.global.kafka.KafkaTopicProperties;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +28,7 @@ public class PostViewedSinkHandler implements SinkHandler {
     private static final String FIELD_EVENT_ACTION = "event";
     private static final String FIELD_POST_ID = "postId";
     private static final String ACTION_VIEW = "travel_detail_pageview";
-    private static final String EVENT_TYPE = "PostViewed";
+    private static final String EVENT_TYPE = "POST_VIEWED";
 
     private static final Pattern NUMERIC_PATTERN = Pattern.compile("^\\d+$");
 
@@ -46,13 +47,25 @@ public class PostViewedSinkHandler implements SinkHandler {
         Map<String, String> logData = logPayload.data();
         Long postId = Long.valueOf(logData.get(FIELD_POST_ID));
 
-        SinkMessage.PostViewedDTO message =
-                new SinkMessage.PostViewedDTO(postId, logPayload.metadata().traceId());
-        String payload = serializePayload(message);
+        String payload = serializePayload(new SinkMessage.PostViewedDTO(postId));
 
         log.debug("조회수 증가 이벤트를 Kafka로 전송합니다. Post ID: {}", postId);
 
-        return kafkaProducer.send(topics.viewEvents(), payload, EVENT_TYPE).thenAccept(result -> {});
+        return kafkaProducer
+                .send(
+                        topics.sinkEvents(),
+                        payload,
+                        EVENT_TYPE,
+                        eventId(logPayload.metadata().traceId()))
+                .thenAccept(result -> {});
+    }
+
+    // 같은 로그를 다시 처리해도 값이 같아야 post-service가 중복을 걸러낸다. 한 요청의 다른 이벤트와 겹치지 않게 타입을 붙인다
+    private String eventId(String traceId) {
+        if (traceId == null || traceId.isBlank()) {
+            return EVENT_TYPE + ":" + UUID.randomUUID();
+        }
+        return EVENT_TYPE + ":" + traceId;
     }
 
     private String serializePayload(Object payload) {

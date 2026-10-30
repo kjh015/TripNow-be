@@ -11,4 +11,4 @@ public record KafkaTopicProperties(
         @NotBlank String filterStream,
         @NotBlank String dedupStream,
         @NotBlank String sinkStream,
-        @NotBlank String viewEvents) {}
+        @NotBlank String sinkEvents) {}

@@ -23,4 +23,8 @@ public class CommentSearchCommandService {
     public void deleteDocument(CommentSearchMessage.DeletedDTO dto) {
         commentDocumentRepository.deleteById(dto.commentId());
     }
+
+    public void deleteDocuments(CommentSearchMessage.BatchDeletedDTO dto) {
+        commentDocumentRepository.deleteAllById(dto.commentIds());
+    }
 }

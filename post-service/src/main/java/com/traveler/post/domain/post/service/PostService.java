@@ -23,6 +23,7 @@ import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -121,6 +122,21 @@ public class PostService {
         log.info("[Post] 게시글 삭제 postId={} memberId={}", postId, memberId);
 
         return postMapper.toDeleteDTO(post);
+    }
+
+    /**
+     * 탈퇴 회원의 게시글을 최대 {@code limit}개까지 소프트 삭제하고 게시글마다 삭제 이벤트를 발행한다. 삭제한 게시글 수를 반환한다.
+     *
+     * <p>관리자 복구에 대비해 이미지는 바로 지우지 않는다. 사용자가 지운 게시글처럼 30일 뒤 영구 삭제 배치(PostCleanupScheduler)가
+     * IMAGE_BATCH_DELETED로 S3에서 지운다.
+     */
+    public int deleteByMember(Long memberId, int limit) {
+        List<Post> posts = postRepository.findByMemberIdOrderByIdAsc(memberId, Limit.of(limit));
+        for (Post post : posts) {
+            post.delete();
+            eventPublisher.publishEvent(postMapper.toDeletedEvent(post));
+        }
+        return posts.size();
     }
 
     // Batch Delete

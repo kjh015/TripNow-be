@@ -1,6 +1,7 @@
 package com.traveler.post.domain.like.dto.message;
 
 import java.time.Instant;
+import java.util.List;
 
 public final class LikeMessage {
 
@@ -11,4 +12,6 @@ public final class LikeMessage {
     public record AddedDTO(Long likeId, Long postId, Long memberId, Instant createdAt) {}
 
     public record RemovedDTO(Long likeId) {}
+
+    public record BatchRemovedDTO(Long postId, List<Long> likeIds) {}
 }

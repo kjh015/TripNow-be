@@ -22,10 +22,12 @@ public class KafkaProducer {
         return executeSend(record);
     }
 
-    // 외부 서비스 이벤트용 (헤더에 eventType 포함하여 전송)
-    public CompletableFuture<SendResult<String, String>> send(String topic, String payload, String eventType) {
+    // 외부 서비스 이벤트용 (헤더에 eventType, eventId 포함하여 전송)
+    public CompletableFuture<SendResult<String, String>> send(
+            String topic, String payload, String eventType, String eventId) {
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, payload);
         record.headers().add("event-type", eventType.getBytes(StandardCharsets.UTF_8));
+        record.headers().add("event-id", eventId.getBytes(StandardCharsets.UTF_8));
         return executeSend(record);
     }
 

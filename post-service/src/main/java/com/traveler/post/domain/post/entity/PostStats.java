@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
  * 게시글마다 {@link #SLOT_COUNT}개의 슬롯을 두며, 게시글 통계는 모든 슬롯의 합계로 계산한다.
  *
  * <p>특정 게시글에 쓰기가 집중될 때 행(칼럼) 잠금 경합을 줄이기 위해 통계를 여러 행으로 분산한다. 요청은
- * {@code PostStatsSlots.getRandomForUpdate}로 슬롯 하나를 무작위로 선택해 잠근 뒤, 해당 슬롯의 값을 갱신한다.
+ * {@code PostStatsSlots.getRandom}로 슬롯 하나를 무작위로 선택해 잠근 뒤, 해당 슬롯의 값을 갱신한다.
  * 행 잠금은 트랜잭션 커밋까지 유지되므로, 좋아요·댓글 쓰기를 마친 후 슬롯을 잠근다.
  *
  * <p>좋아요·댓글의 추가와 취소가 서로 다른 슬롯에 반영될 수 있으므로 슬롯별 값은 음수가 될 수 있다.
@@ -75,5 +75,16 @@ public class PostStats {
     public void removeComment(int star) {
         this.commentCount--;
         this.starSum -= star;
+    }
+
+    // 탈퇴 회원 정리: 한 게시글에서 지운 댓글 여러 개를 슬롯 하나에 한 번에 반영한다
+    public void removeComments(long count, long starSum) {
+        this.commentCount -= count;
+        this.starSum -= starSum;
+    }
+
+    // 탈퇴 회원 정리: 한 게시글에서 지운 좋아요 여러 개를 슬롯 하나에 한 번에 반영한다
+    public void removeLikes(long count) {
+        this.likeCount -= count;
     }
 }

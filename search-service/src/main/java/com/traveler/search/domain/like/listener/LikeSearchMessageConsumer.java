@@ -45,6 +45,10 @@ public class LikeSearchMessageConsumer {
                 likeSearchCommandService.removeDocument(
                         objectMapper.readValue(payload, LikeSearchMessage.RemovedDTO.class));
             }
+            case "BATCH_REMOVED" -> {
+                likeSearchCommandService.removeDocuments(
+                        objectMapper.readValue(payload, LikeSearchMessage.BatchRemovedDTO.class));
+            }
             default -> log.warn("지원하지 않는 이벤트 타입입니다: {}", eventType);
         }
         // 모든 처리가 정상일 때만 커밋

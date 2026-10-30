@@ -7,6 +7,7 @@ import com.traveler.post.global.outbox.event.OutboxEventPublisher;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
+/** 메시지 키는 게시글 ID다. 같은 게시글의 댓글 메시지가 한 파티션에 들어가 묶음 삭제와도 순서가 유지된다. */
 @Component
 public class CommentOutboxPublisher extends OutboxEventPublisher {
 
@@ -15,14 +16,18 @@ public class CommentOutboxPublisher extends OutboxEventPublisher {
     }
 
     public void publishCreated(CommentMessage.CreatedDTO payload) {
-        publish(payload.commentId(), CommentEventType.CREATED, payload);
+        publish(payload.postId(), CommentEventType.CREATED, payload);
     }
 
-    public void publishUpdated(CommentMessage.UpdatedDTO payload) {
-        publish(payload.commentId(), CommentEventType.UPDATED, payload);
+    public void publishUpdated(CommentMessage.UpdatedDTO payload, Long postId) {
+        publish(postId, CommentEventType.UPDATED, payload);
     }
 
-    public void publishDeleted(CommentMessage.DeletedDTO payload) {
-        publish(payload.commentId(), CommentEventType.DELETED, payload);
+    public void publishDeleted(CommentMessage.DeletedDTO payload, Long postId) {
+        publish(postId, CommentEventType.DELETED, payload);
+    }
+
+    public void publishBatchDeleted(CommentMessage.BatchDeletedDTO payload) {
+        publish(payload.postId(), CommentEventType.BATCH_DELETED, payload);
     }
 }

@@ -1,18 +1,31 @@
 package com.traveler.post.domain.comment.repository;
 
 import com.traveler.post.domain.comment.entity.Comment;
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface CommentRepository extends JpaRepository<Comment, Long> {
+    // 탈퇴 회원 정리. 소프트 삭제된 댓글은 @SQLRestriction으로 빠지고, 조회한 댓글은 커밋까지 잠겨 다른 삭제와 겹치지 않는다
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    List<Comment> findByMemberIdOrderByIdAsc(Long memberId, Limit limit);
+
+    @Modifying
+    @Query(
+            value = "UPDATE comment SET is_deleted = true, deleted_at = :now, updated_at = :now WHERE id IN (:ids)",
+            nativeQuery = true)
+    void softDeleteAll(@Param("ids") List<Long> ids, @Param("now") Instant now);
+
     @Query(
             value = "SELECT c.id FROM comment c WHERE c.deleted_at <= :threshold AND c.is_deleted = true",
             nativeQuery = true)
@@ -37,6 +50,10 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
                     + "AND (:deleted IS NULL OR c.is_deleted = :deleted)",
             nativeQuery = true)
     Page<Comment> findAllForAdmin(@Param("postId") Long postId, @Param("deleted") Boolean deleted, Pageable pageable);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT c FROM Comment c WHERE c.id = :commentId")
+    Optional<Comment> findByIdWithLock(@Param("commentId") Long commentId);
 
     @Query(value = "SELECT * FROM comment c WHERE c.id = :commentId FOR UPDATE", nativeQuery = true)
     Optional<Comment> findByIdForAdminWithLock(@Param("commentId") Long commentId);

@@ -20,16 +20,21 @@ public class CommentEventListener {
 
     @EventListener
     public void handleUpdatedEvent(CommentEvent.Updated event) {
-        commentOutboxPublisher.publishUpdated(event.commentMsg());
+        commentOutboxPublisher.publishUpdated(event.commentMsg(), event.postId());
     }
 
     @EventListener
     public void handleDeletedEvent(CommentEvent.Deleted event) {
-        commentOutboxPublisher.publishDeleted(event.commentMsg());
+        commentOutboxPublisher.publishDeleted(event.commentMsg(), event.postId());
+    }
+
+    @EventListener
+    public void handleBatchDeletedEvent(CommentEvent.BatchDeleted event) {
+        commentOutboxPublisher.publishBatchDeleted(event.commentMsg());
     }
 
     @EventListener
     public void handleAdminDeletedEvent(CommentEvent.AdminDeleted event) {
-        commentOutboxPublisher.publishDeleted(event.commentMsg());
+        commentOutboxPublisher.publishDeleted(event.commentMsg(), event.postId());
     }
 }

@@ -5,6 +5,7 @@ import com.traveler.post.domain.like.dto.message.LikeMessage;
 import com.traveler.post.domain.like.dto.response.LikeResponse;
 import com.traveler.post.domain.like.entity.Like;
 import com.traveler.post.domain.post.dto.result.PostStatsSummary;
+import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
@@ -26,6 +27,11 @@ public interface LikeMapper {
     // Event
     default LikeEvent.Added toAddedEvent(Like like) {
         return new LikeEvent.Added(toAddedMessage(like));
+    }
+
+    default LikeEvent.BatchRemoved toBatchRemovedEvent(Long postId, List<Like> likes) {
+        return new LikeEvent.BatchRemoved(new LikeMessage.BatchRemovedDTO(
+                postId, likes.stream().map(Like::getId).toList()));
     }
 
     default LikeEvent.Removed toRemovedEvent(Like like) {

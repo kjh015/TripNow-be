@@ -1,5 +1,6 @@
 package com.traveler.member.testsupport;
 
+import io.jsonwebtoken.security.EcPrivateJwkBuilder;
 import io.jsonwebtoken.security.Jwks;
 import java.security.KeyPair;
 import java.security.interfaces.ECPrivateKey;
@@ -26,7 +27,7 @@ public final class TestJwks {
      * Jwks.json()은 개인키 값을 가려서 출력하므로 UNSAFE_JSON으로 직렬화한다.
      */
     public static String privateJwk(KeyPair keyPair, String kid) {
-        var builder =
+        EcPrivateJwkBuilder builder =
                 Jwks.builder().key((ECPrivateKey) keyPair.getPrivate()).publicKey((ECPublicKey) keyPair.getPublic());
         if (kid != null) {
             builder.id(kid);
