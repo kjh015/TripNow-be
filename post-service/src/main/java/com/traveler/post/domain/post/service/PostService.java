@@ -6,6 +6,7 @@ import com.traveler.post.domain.post.dto.response.PostResponse;
 import com.traveler.post.domain.post.dto.result.PostStatsSummary;
 import com.traveler.post.domain.post.dto.result.PostStatsSyncBatch;
 import com.traveler.post.domain.post.entity.Post;
+import com.traveler.post.domain.post.entity.PostImage;
 import com.traveler.post.domain.post.entity.PostStats;
 import com.traveler.post.domain.post.entity.TravelPlace;
 import com.traveler.post.domain.post.mapper.PostMapper;
@@ -13,10 +14,10 @@ import com.traveler.post.domain.post.mapper.TravelPlaceMapper;
 import com.traveler.post.domain.post.repository.PostRepository;
 import com.traveler.post.domain.post.repository.PostStatsRepository;
 import com.traveler.post.domain.post.support.PostHardDeleter;
-import com.traveler.post.domain.post.support.PostImageKeyValidator;
 import com.traveler.post.domain.post.support.PostStatsSlots;
 import com.traveler.post.global.exception.PostServiceException;
 import com.traveler.post.global.exception.code.PostServiceErrorCode;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,7 +28,6 @@ import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
 
 @Slf4j
 @Service
@@ -40,60 +40,56 @@ public class PostService {
     private final PostMapper postMapper;
     private final TravelPlaceMapper travelPlaceMapper;
     private final ApplicationEventPublisher eventPublisher;
-    private final PostImageKeyValidator postImageKeyValidator;
     private final PostHardDeleter postHardDeleter;
-    private final TransactionTemplate transactionTemplate;
 
-    // S3 확인(headObject)이 DB 커넥션을 붙잡지 않도록 이미지 검증을 트랜잭션 밖에서 끝낸다
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public PostResponse.CreateDTO createPost(Long memberId, PostRequest.CreateDTO dto) {
-        postImageKeyValidator.validateNewKeys(memberId, dto.images());
+    /** imageKeys는 PostFacade가 트랜잭션 밖에서 확정한 키다. */
+    public PostResponse.CreateDTO createPost(Long memberId, PostRequest.CreateDTO dto, List<String> imageKeys) {
+        TravelPlace travelPlace = travelPlaceMapper.toCreateEntity(dto);
 
-        return transactionTemplate.execute(status -> {
-            TravelPlace travelPlace = travelPlaceMapper.toCreateEntity(dto);
+        Post post = postMapper.toCreateEntity(dto, travelPlace, memberId);
 
-            Post post = postMapper.toCreateEntity(dto, travelPlace, memberId);
+        post.setImages(imageKeys);
 
-            post.setImages(dto.images());
+        Post savedPost = postRepository.save(post);
+        postStatsRepository.saveAll(PostStats.createSlots(savedPost));
 
-            Post savedPost = postRepository.save(post);
-            postStatsRepository.saveAll(PostStats.createSlots(savedPost));
+        eventPublisher.publishEvent(postMapper.toCreatedEvent(savedPost));
 
-            eventPublisher.publishEvent(postMapper.toCreatedEvent(savedPost));
-
-            return postMapper.toCreateDTO(savedPost);
-        });
+        return postMapper.toCreateDTO(savedPost);
     }
 
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public PostResponse.UpdateDTO updatePost(Long postId, Long memberId, PostRequest.UpdateDTO dto) {
-        // 이미 붙어 있는 키는 저장 시 검증을 통과한 본인 키이므로 새로 추가되는 키만 검증한다
-        Set<String> validatedKeys = getOwnedPost(postId, memberId).findNewImageKeys(dto.images());
-        postImageKeyValidator.validateNewKeys(memberId, validatedKeys);
+    /** 이미지 확정 전에 게시글 소유자를 확인하고 지금 붙어 있는 키를 돌려준다. */
+    @Transactional(readOnly = true)
+    public List<String> getOwnedImageKeys(Long postId, Long memberId) {
+        return getOwnedPost(postId, memberId).getImages().stream()
+                .map(PostImage::getImageKey)
+                .toList();
+    }
 
-        return transactionTemplate.execute(status -> {
-            Post post = getOwnedPost(postId, memberId);
+    /** imageKeys는 PostFacade가 트랜잭션 밖에서 확정한 키이고, copiedKeys는 그중 이번 요청에서 복사한 키다. */
+    public PostResponse.UpdateDTO updatePost(
+            Long postId, Long memberId, PostRequest.UpdateDTO dto, List<String> imageKeys, List<String> copiedKeys) {
+        Post post = getOwnedPost(postId, memberId);
 
-            post.getTravelPlace().update(dto.category(), dto.region(), dto.travelPlace(), dto.address());
-            post.update(dto.title(), dto.content());
+        post.getTravelPlace().update(dto.category(), dto.region(), dto.travelPlace(), dto.address());
+        post.update(dto.title(), dto.content());
 
-            if (dto.images() != null) {
-                // 검증 이후 트랜잭션 시작 전에 이미지 구성이 바뀌어 검증하지 않은 키가 생긴 경우 거부
-                if (!validatedKeys.containsAll(post.findNewImageKeys(dto.images()))) {
-                    throw new PostServiceException(PostServiceErrorCode.POST_IMAGE_INVALID_KEY);
-                }
-
-                List<String> keysToDelete = post.setImages(dto.images());
-
-                if (!keysToDelete.isEmpty()) {
-                    eventPublisher.publishEvent(postMapper.toImageDeleteEvent(post.getId(), keysToDelete));
-                }
+        if (imageKeys != null) {
+            // 확정 이후 트랜잭션 시작 전에 이미지 구성이 바뀌어 확정하지 않은 키가 생긴 경우 거부
+            if (!new HashSet<>(copiedKeys).containsAll(post.findNewImageKeys(imageKeys))) {
+                throw new PostServiceException(PostServiceErrorCode.S3_KEY_FORBIDDEN);
             }
 
-            eventPublisher.publishEvent(postMapper.toUpdatedEvent(post));
+            List<String> keysToDelete = post.setImages(imageKeys);
 
-            return postMapper.toUpdateDTO(post);
-        });
+            if (!keysToDelete.isEmpty()) {
+                eventPublisher.publishEvent(postMapper.toImageDeleteEvent(post.getId(), keysToDelete));
+            }
+        }
+
+        eventPublisher.publishEvent(postMapper.toUpdatedEvent(post));
+
+        return postMapper.toUpdateDTO(post);
     }
 
     private Post getOwnedPost(Long postId, Long memberId) {

@@ -77,7 +77,7 @@ class ImageTypeConsistencyTest {
 
         verify(s3Service)
                 .generatePresignedUrl(
-                        matches("^posts/1/[0-9a-f-]{36}\\." + type.getExtension() + "$"), eq(type.getContentType()));
+                        matches("^temp/1/[0-9a-f-]{36}\\." + type.getExtension() + "$"), eq(type.getContentType()));
     }
 
     @Test

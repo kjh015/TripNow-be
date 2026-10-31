@@ -4,7 +4,6 @@ import com.traveler.post.global.exception.PostServiceException;
 import com.traveler.post.global.exception.code.PostServiceErrorCode;
 import java.time.Duration;
 import java.util.List;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -76,21 +75,30 @@ public class S3Service {
         return path.startsWith("/") ? path.substring(1) : path;
     }
 
-    /** 객체가 있으면 크기(byte)를, 없으면 빈 값을 돌려준다. */
-    public Optional<Long> findObjectSize(String key) {
+    /** 객체 메타데이터를 조회한다. 객체가 없으면 S3_FILE_NOT_FOUND. */
+    public HeadObjectResponse headObject(String key) {
         try {
-            HeadObjectResponse response = s3Client.headObject(
+            return s3Client.headObject(
                     HeadObjectRequest.builder().bucket(bucket).key(key).build());
-            return Optional.of(response.contentLength());
         } catch (NoSuchKeyException e) {
-            return Optional.empty();
+            throw new PostServiceException(PostServiceErrorCode.S3_FILE_NOT_FOUND);
         } catch (S3Exception e) {
             // HEAD 응답에는 본문이 없어 404가 NoSuchKeyException으로 변환되지 않을 수 있다
             if (e.statusCode() == 404) {
-                return Optional.empty();
+                throw new PostServiceException(PostServiceErrorCode.S3_FILE_NOT_FOUND);
             }
             throw e;
         }
+    }
+
+    /** 같은 버킷 안에서 객체를 복사한다. */
+    public void copyObject(String sourceKey, String destinationKey) {
+        s3Client.copyObject(CopyObjectRequest.builder()
+                .sourceBucket(bucket)
+                .sourceKey(sourceKey)
+                .destinationBucket(bucket)
+                .destinationKey(destinationKey)
+                .build());
     }
 
     public String generatePresignedUrl(String key, String contentType) {
@@ -107,7 +115,7 @@ public class S3Service {
                 .key(key)
                 .contentType(contentType)
                 .build();
-        // Presigned PUT은 업로드 크기를 제한할 수 없다. 크기(MAX_FILE_SIZE)는 게시글 저장 시 findObjectSize로 검증한다.
+        // Presigned PUT은 업로드 크기를 제한할 수 없다. 크기(MAX_FILE_SIZE)는 게시글 저장 시 headObject로 검증한다.
 
         PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
                 .signatureDuration(Duration.ofMinutes(presignedUrlDurationMinutes))

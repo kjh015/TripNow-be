@@ -2,7 +2,7 @@ package com.traveler.post.integration.member.listener;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.traveler.post.integration.member.dto.message.MemberMessage;
-import com.traveler.post.integration.member.handler.MemberWithdrawalHandler;
+import com.traveler.post.integration.member.facade.MemberWithdrawalFacade;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +24,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class MemberEventConsumer {
 
-    private final MemberWithdrawalHandler memberWithdrawalHandler;
+    private final MemberWithdrawalFacade memberWithdrawalFacade;
     private final ObjectMapper objectMapper;
 
     @SneakyThrows
@@ -47,7 +47,7 @@ public class MemberEventConsumer {
         switch (eventType) {
             case "WITHDRAWN" -> {
                 MemberMessage.WithdrawnDTO dto = objectMapper.readValue(payload, MemberMessage.WithdrawnDTO.class);
-                memberWithdrawalHandler.handle(dto.memberId());
+                memberWithdrawalFacade.deleteContent(dto.memberId());
             }
             default -> log.warn("지원하지 않는 회원 이벤트 타입입니다: {}", eventType);
         }

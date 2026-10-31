@@ -119,7 +119,7 @@ class MemberEventConsumerIntegrationTest extends IntegrationTestSupport {
         long withdrawn = MEMBER_IDS.incrementAndGet();
         long other = MEMBER_IDS.incrementAndGet();
         Long otherPost = savePost(other);
-        int count = 105; // MemberWithdrawalHandler.BATCH_SIZE(100)보다 많게
+        int count = 105; // MemberWithdrawalFacade.BATCH_SIZE(100)보다 많게
         for (int i = 0; i < count; i++) {
             commentService.createComment(withdrawn, new CommentRequest.CreateDTO(otherPost, "댓글 " + i, 2));
         }

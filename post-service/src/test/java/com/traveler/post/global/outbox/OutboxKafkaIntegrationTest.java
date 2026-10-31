@@ -73,7 +73,8 @@ class OutboxKafkaIntegrationTest extends IntegrationTestSupport {
                 .createPost(
                         memberId,
                         new PostRequest.CreateDTO(
-                                "아웃박스 게시글", "본문", "황리단길", "경상북도 경주시", Category.FOOD, Region.GYEONGGI, List.of()))
+                                "아웃박스 게시글", "본문", "황리단길", "경상북도 경주시", Category.FOOD, Region.GYEONGGI, List.of()),
+                        List.of())
                 .postId();
 
         Outbox outbox = await().atMost(TIMEOUT)
@@ -117,7 +118,8 @@ class OutboxKafkaIntegrationTest extends IntegrationTestSupport {
                                             "경상북도 경주시",
                                             Category.FOOD,
                                             Region.GYEONGGI,
-                                            List.of()))
+                                            List.of()),
+                                    List.of())
                             .postId());
                 });
 

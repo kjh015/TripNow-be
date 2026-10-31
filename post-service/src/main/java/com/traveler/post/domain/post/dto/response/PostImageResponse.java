@@ -11,7 +11,7 @@ public final class PostImageResponse {
     public record PresignedUrlDTO(
             @Schema(
                             description = "S3 업로드용 URL",
-                            example = "https://travel-bucket.s3.ap-northeast-2.amazonaws.com/posts/...")
+                            example = "https://travel-bucket.s3.ap-northeast-2.amazonaws.com/temp/...")
                     String url,
             @Schema(
                             description = "S3 객체 키 (게시글 생성/수정 API 요청 시 images 리스트에 담아 전송)",

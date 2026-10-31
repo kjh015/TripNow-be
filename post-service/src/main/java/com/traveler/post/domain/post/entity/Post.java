@@ -23,7 +23,7 @@ import org.hibernate.annotations.SQLRestriction;
         name = "post",
         indexes = {
             @Index(name = "idx_post_deleted_at_status", columnList = "is_deleted, deleted_at"),
-            // 탈퇴 회원의 게시글 정리(MemberWithdrawalHandler)
+            // 탈퇴 회원의 게시글 정리(MemberWithdrawalFacade)
             @Index(name = "idx_post_member_id", columnList = "member_id")
         })
 public class Post extends BaseEntity {

@@ -1,4 +1,4 @@
-package com.traveler.post.integration.member.handler;
+package com.traveler.post.integration.member.facade;
 
 import com.traveler.post.domain.comment.service.CommentService;
 import com.traveler.post.domain.like.service.LikeService;
@@ -35,7 +35,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class MemberWithdrawalHandler {
+public class MemberWithdrawalFacade {
 
     // 댓글·좋아요 배치는 게시글마다 통계 슬롯 하나를 커밋까지 잠그므로, 사용자 요청이 오래 기다리지 않게 크기를 작게 둔다
     static final int BATCH_SIZE = 100;
@@ -47,7 +47,7 @@ public class MemberWithdrawalHandler {
     private final ApplicationEventPublisher eventPublisher;
     private final TransactionTemplate transactionTemplate;
 
-    public void handle(Long memberId) {
+    public void deleteContent(Long memberId) {
         int posts = drain(() -> postService.deleteByMember(memberId, BATCH_SIZE));
         int comments = drain(() -> commentService.deleteByMember(memberId, BATCH_SIZE));
         int likes = drain(() -> likeService.removeByMember(memberId, BATCH_SIZE));
