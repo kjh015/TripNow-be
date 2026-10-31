@@ -1,8 +1,5 @@
 package com.traveler.post.domain.post.service;
 
-import static com.traveler.post.domain.post.support.PostImageKey.POST_PREFIX;
-import static com.traveler.post.domain.post.support.PostImageKey.TEMP_PREFIX;
-
 import com.traveler.post.domain.post.dto.response.PostImageResponse;
 import com.traveler.post.domain.post.mapper.PostImageMapper;
 import com.traveler.post.domain.post.support.PostImageKey;
@@ -62,7 +59,7 @@ public class PostImageService {
         return confirmed;
     }
 
-    /** 확정된 키 중 이번 요청에서 새로 복사한 키. 같은 임시 키를 다시 보내 이미 붙은 보관 키가 된 경우는 뺀다. */
+    /** 확정된 키 중 이번 요청에서 새로 복사한 키. 게시글에 이미 붙어 있어 그대로 통과한 키는 뺀다. */
     public List<String> findCopiedKeys(List<String> confirmedKeys, Set<String> currentKeys) {
         if (confirmedKeys == null) return List.of();
         return confirmedKeys.stream()
@@ -83,7 +80,6 @@ public class PostImageService {
     }
 
     private String confirm(Long memberId, String tempKey) {
-        String ownedPrefix = TEMP_PREFIX + memberId + "/";
         // 1. 이 사용자에게 발급된 키인가
         if (!PostImageKey.isIssuedFor(memberId, tempKey)) {
             throw new PostServiceException(PostServiceErrorCode.S3_KEY_FORBIDDEN);
@@ -96,7 +92,7 @@ public class PostImageService {
             throw new PostServiceException(PostServiceErrorCode.S3_FILE_TOO_LARGE);
         }
         // 3. 보관 자리로 복사. temp/ 원본은 lifecycle 규칙이 지운다
-        String finalKey = POST_PREFIX + memberId + "/" + tempKey.substring(ownedPrefix.length());
+        String finalKey = PostImageKey.createPostKey(memberId, tempKey);
         s3Service.copyObject(tempKey, finalKey);
         return finalKey;
     }

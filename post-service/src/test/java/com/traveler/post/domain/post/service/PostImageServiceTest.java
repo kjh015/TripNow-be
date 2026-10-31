@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
@@ -33,6 +34,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -122,10 +124,21 @@ class PostImageServiceTest {
         List<String> confirmed =
                 postImageService.confirmUploads(MEMBER_ID, List.of(MEMBER_1_TEMP_KEY, MEMBER_1_TEMP_KEY_2));
 
-        assertThat(confirmed).containsExactly(MEMBER_1_KEY, MEMBER_1_KEY_2);
-        verify(s3Service).copyObject(MEMBER_1_TEMP_KEY, MEMBER_1_KEY);
-        verify(s3Service).copyObject(MEMBER_1_TEMP_KEY_2, MEMBER_1_KEY_2);
+        assertThat(confirmed).hasSize(2);
+        assertThat(confirmed.get(0)).matches("^posts/1/[0-9a-f-]{36}\\.png$");
+        assertThat(confirmed.get(1)).matches("^posts/1/[0-9a-f-]{36}\\.jpg$");
+        verify(s3Service).copyObject(MEMBER_1_TEMP_KEY, confirmed.get(0));
+        verify(s3Service).copyObject(MEMBER_1_TEMP_KEY_2, confirmed.get(1));
         verify(s3Service, never()).deleteFilesByKeys(any());
+    }
+
+    @Test
+    @DisplayName("같은 임시 키를 다시 확정해도 다른 보관 키를 돌려준다")
+    void createsNewPostKeyEveryTime() {
+        given(s3Service.headObject(MEMBER_1_TEMP_KEY)).willReturn(size(1024L));
+
+        assertThat(postImageService.confirmUploads(MEMBER_ID, List.of(MEMBER_1_TEMP_KEY)))
+                .doesNotContainAnyElementsOf(postImageService.confirmUploads(MEMBER_ID, List.of(MEMBER_1_TEMP_KEY)));
     }
 
     @Test
@@ -141,7 +154,9 @@ class PostImageServiceTest {
                 .extracting("code")
                 .isEqualTo(PostServiceErrorCode.S3_FILE_NOT_FOUND);
 
-        verify(s3Service).deleteFilesByKeys(List.of(MEMBER_1_KEY));
+        ArgumentCaptor<String> copiedKey = ArgumentCaptor.forClass(String.class);
+        verify(s3Service).copyObject(eq(MEMBER_1_TEMP_KEY), copiedKey.capture());
+        verify(s3Service).deleteFilesByKeys(List.of(copiedKey.getValue()));
     }
 
     @Test
@@ -152,7 +167,7 @@ class PostImageServiceTest {
         List<String> confirmed = postImageService.confirmUploads(
                 MEMBER_ID, List.of(MEMBER_1_KEY, MEMBER_1_TEMP_KEY_2), List.of(MEMBER_1_KEY));
 
-        assertThat(confirmed).containsExactly(MEMBER_1_KEY, MEMBER_1_KEY_2);
+        assertThat(confirmed).hasSize(2).startsWith(MEMBER_1_KEY);
         verify(s3Service, times(1)).headObject(anyString());
         verify(s3Service, times(1)).copyObject(any(), any());
     }
@@ -179,7 +194,7 @@ class PostImageServiceTest {
     }
 
     @Test
-    @DisplayName("이미 붙은 보관 키가 된 경우는 새로 복사한 키에서 뺀다")
+    @DisplayName("이미 붙어 있어 통과한 키와 중복은 복사한 키에서 뺀다")
     void findCopiedKeysExcludesCurrentKeys() {
         assertThat(postImageService.findCopiedKeys(
                         List.of(MEMBER_1_KEY, MEMBER_1_KEY_2, MEMBER_1_KEY_2), Set.of(MEMBER_1_KEY)))

@@ -1,7 +1,6 @@
 package com.traveler.post.domain.post.facade;
 
 import static com.traveler.post.testsupport.fixture.PostFixture.MEMBER_1_KEY;
-import static com.traveler.post.testsupport.fixture.PostFixture.MEMBER_1_KEY_2;
 import static com.traveler.post.testsupport.fixture.PostFixture.MEMBER_1_TEMP_KEY;
 import static com.traveler.post.testsupport.fixture.PostFixture.MEMBER_1_TEMP_KEY_2;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -11,6 +10,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -27,6 +27,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 
 class PostFacadeTest {
@@ -52,7 +53,8 @@ class PostFacadeTest {
 
         facade.createPost(MEMBER_ID, dto);
 
-        verify(postService).createPost(MEMBER_ID, dto, List.of(MEMBER_1_KEY));
+        List<String> copiedKeys = copiedKeys(1);
+        verify(postService).createPost(MEMBER_ID, dto, copiedKeys);
         verify(s3Service, never()).deleteFilesByKeys(any());
     }
 
@@ -64,7 +66,8 @@ class PostFacadeTest {
 
         assertThatThrownBy(() -> facade.createPost(MEMBER_ID, dto)).isInstanceOf(IllegalStateException.class);
 
-        verify(s3Service).deleteFilesByKeys(List.of(MEMBER_1_KEY, MEMBER_1_KEY_2));
+        List<String> copiedKeys = copiedKeys(2);
+        verify(s3Service).deleteFilesByKeys(copiedKeys);
     }
 
     @Test
@@ -76,19 +79,8 @@ class PostFacadeTest {
 
         assertThatThrownBy(() -> facade.updatePost(POST_ID, MEMBER_ID, dto)).isInstanceOf(IllegalStateException.class);
 
-        verify(s3Service).deleteFilesByKeys(List.of(MEMBER_1_KEY_2));
-    }
-
-    @Test
-    @DisplayName("수정: 이미 붙은 키의 임시 키를 다시 보내 실패해도 붙어 있는 키는 지우지 않는다")
-    void updateFailureKeepsKeyConfirmedFromResentTempKey() {
-        PostRequest.UpdateDTO dto = updateDto(List.of(MEMBER_1_TEMP_KEY));
-        given(postService.getOwnedImageKeys(POST_ID, MEMBER_ID)).willReturn(List.of(MEMBER_1_KEY));
-        given(postService.updatePost(any(), any(), any(), any(), any())).willThrow(new IllegalStateException("db"));
-
-        assertThatThrownBy(() -> facade.updatePost(POST_ID, MEMBER_ID, dto)).isInstanceOf(IllegalStateException.class);
-
-        verify(s3Service, never()).deleteFilesByKeys(any());
+        List<String> copiedKeys = copiedKeys(1);
+        verify(s3Service).deleteFilesByKeys(copiedKeys);
     }
 
     @Test
@@ -99,13 +91,14 @@ class PostFacadeTest {
 
         facade.updatePost(POST_ID, MEMBER_ID, dto);
 
+        String copiedKey = copiedKeys(1).getFirst();
         verify(postService)
                 .updatePost(
                         eq(POST_ID),
                         eq(MEMBER_ID),
                         eq(dto),
-                        eq(List.of(MEMBER_1_KEY, MEMBER_1_KEY_2)),
-                        eq(List.of(MEMBER_1_KEY_2)));
+                        eq(List.of(MEMBER_1_KEY, copiedKey)),
+                        eq(List.of(copiedKey)));
     }
 
     @Test
@@ -131,6 +124,13 @@ class PostFacadeTest {
 
         verify(postService).updatePost(POST_ID, MEMBER_ID, dto, null, List.of());
         verifyNoInteractions(s3Service);
+    }
+
+    // 보관 키는 확정마다 새로 만들어지므로 S3에 복사한 대상 키로 비교한다
+    private List<String> copiedKeys(int count) {
+        ArgumentCaptor<String> destination = ArgumentCaptor.forClass(String.class);
+        verify(s3Service, times(count)).copyObject(anyString(), destination.capture());
+        return destination.getAllValues();
     }
 
     private static PostRequest.CreateDTO createDto(List<String> images) {

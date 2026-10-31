@@ -15,6 +15,6 @@ public final class PostImageResponse {
                     String url,
             @Schema(
                             description = "S3 객체 키 (게시글 생성/수정 API 요청 시 images 리스트에 담아 전송)",
-                            example = "images/2026/05/11/a1b2c3d4-e5f6.png")
+                            example = "temp/1/3f2b8c1e-5d4a-4e6b-9c7d-1a2b3c4d5e6f.png")
                     String imageKey) {}
 }
