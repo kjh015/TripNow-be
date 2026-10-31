@@ -3,6 +3,7 @@ package com.traveler.web.domain.member.facade;
 import com.traveler.common.core.response.PageResponse;
 import com.traveler.web.domain.member.adapter.AdminMemberClientAdapter;
 import com.traveler.web.domain.member.client.dto.response.AdminMemberClientResponse;
+import com.traveler.web.domain.member.dto.request.AdminMemberRequest;
 import com.traveler.web.domain.member.dto.response.AdminMemberResponse;
 import com.traveler.web.domain.member.mapper.MemberMapper;
 import lombok.RequiredArgsConstructor;
@@ -25,8 +26,10 @@ public class AdminMemberFacade {
         return memberMapper.toResponseDeleteDTO(clientResponse);
     }
 
-    public PageResponse<AdminMemberResponse.ListDTO> getMembers(Pageable pageable) {
-        PageResponse<AdminMemberClientResponse.ListDTO> clientResponse = adminMemberClientAdapter.getMembers(pageable);
+    public PageResponse<AdminMemberResponse.ListDTO> getMembers(
+            AdminMemberRequest.SearchDTO condition, Pageable pageable) {
+        PageResponse<AdminMemberClientResponse.ListDTO> clientResponse =
+                adminMemberClientAdapter.getMembers(memberMapper.toClientSearchDTO(condition), pageable);
         return clientResponse.map(memberMapper::toResponseListDTO);
     }
 

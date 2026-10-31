@@ -12,6 +12,7 @@ public enum MemberServiceErrorCode implements BaseErrorCode {
     MEMBER_ALREADY_DELETED(400, "MEMBER400_2", "이미 삭제된 회원입니다."),
     INVALID_PASSWORD(400, "MEMBER400_3", "비밀번호가 일치하지 않습니다."),
     PASSWORD_SAME_AS_OLD(400, "MEMBER400_4", "새 비밀번호는 기존 비밀번호와 다르게 설정해야 합니다."),
+    MEMBER_INVALID_SORT(400, "MEMBER400_5", "허용하지 않은 정렬 기준입니다."),
     MEMBER_NOT_FOUND(404, "MEMBER404_1", "요청한 회원을 찾을 수 없습니다."),
     MEMBER_EXISTS_LOGINID(409, "MEMBER409_1", "이미 존재하는 아이디입니다."),
     MEMBER_EXISTS_EMAIL(409, "MEMBER409_2", "이미 존재하는 이메일입니다."),

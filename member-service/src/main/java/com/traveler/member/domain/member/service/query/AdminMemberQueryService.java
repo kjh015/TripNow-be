@@ -2,6 +2,7 @@ package com.traveler.member.domain.member.service.query;
 
 import com.traveler.common.api.converter.PageConverter;
 import com.traveler.common.core.response.PageResponse;
+import com.traveler.member.domain.member.dto.request.AdminMemberRequest;
 import com.traveler.member.domain.member.dto.response.AdminMemberResponse;
 import com.traveler.member.domain.member.entity.Member;
 import com.traveler.member.domain.member.entity.MemberWithdrawal;
@@ -30,8 +31,9 @@ public class AdminMemberQueryService {
     private final MemberWithdrawalRepository memberWithdrawalRepository;
     private final MemberMapper memberMapper;
 
-    public PageResponse<AdminMemberResponse.ListDTO> getMembers(Pageable pageable) {
-        Page<Member> members = memberRepository.findAll(pageable);
+    public PageResponse<AdminMemberResponse.ListDTO> getMembers(
+            AdminMemberRequest.SearchDTO condition, Pageable pageable) {
+        Page<Member> members = memberRepository.search(condition, pageable);
         return PageConverter.toPageResponse(members, memberMapper::toListDTO);
     }
 
