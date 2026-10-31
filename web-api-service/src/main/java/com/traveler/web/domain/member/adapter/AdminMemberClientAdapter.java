@@ -46,6 +46,12 @@ public class AdminMemberClientAdapter {
                 .result());
     }
 
+    public PageResponse<AdminMemberClientResponse.PendingWithdrawalDTO> getPendingWithdrawals(Pageable pageable) {
+        return downstreamCallExecutor.execute(
+                DownstreamServiceNames.MEMBER,
+                () -> adminMemberClient.getPendingWithdrawals(pageable).result());
+    }
+
     public AdminMemberClientResponse.DetailDTO getMember(Long memberId) {
         return downstreamCallExecutor.execute(
                 DownstreamServiceNames.MEMBER,

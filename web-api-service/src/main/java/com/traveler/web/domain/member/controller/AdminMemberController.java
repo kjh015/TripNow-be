@@ -58,6 +58,14 @@ public class AdminMemberController {
         return ApiResponse.onSuccess(SuccessCode.OK, adminMemberFacade.getMembers(condition, pageable));
     }
 
+    @Operation(summary = "회원 탈퇴 후 콘텐츠 정리 미완료 회원 조회", description = "탈퇴 후 30분이 지났지만 게시글·댓글·좋아요 정리가 완료되지 않은 회원을 조회합니다.")
+    @GetMapping("/withdrawals/pending")
+    public ApiResponse<PageResponse<AdminMemberResponse.PendingWithdrawalDTO>> getPendingWithdrawals(
+            @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.ASC)
+                    Pageable pageable) {
+        return ApiResponse.onSuccess(SuccessCode.OK, adminMemberFacade.getPendingWithdrawals(pageable));
+    }
+
     @Operation(summary = "회원 상세 정보 조회", description = "어드민 패널에서 특정 회원의 상세 정보(탈퇴 여부 포함)를 조회합니다.")
     @ApiErrorCodeExamples(common = {ErrorCode.INVALID_TYPE_VALUE})
     @GetMapping("/{memberId}")

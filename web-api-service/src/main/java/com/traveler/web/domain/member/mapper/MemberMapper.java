@@ -43,4 +43,7 @@ public interface MemberMapper {
     AdminMemberResponse.ListDTO toResponseListDTO(AdminMemberClientResponse.ListDTO listDTO);
 
     AdminMemberResponse.DetailDTO toResponseDetailDTO(AdminMemberClientResponse.DetailDTO clientResponse);
+
+    AdminMemberResponse.PendingWithdrawalDTO toResponsePendingWithdrawalDTO(
+            AdminMemberClientResponse.PendingWithdrawalDTO clientResponse);
 }

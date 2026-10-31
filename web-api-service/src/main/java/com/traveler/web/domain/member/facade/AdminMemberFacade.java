@@ -33,6 +33,12 @@ public class AdminMemberFacade {
         return clientResponse.map(memberMapper::toResponseListDTO);
     }
 
+    public PageResponse<AdminMemberResponse.PendingWithdrawalDTO> getPendingWithdrawals(Pageable pageable) {
+        PageResponse<AdminMemberClientResponse.PendingWithdrawalDTO> clientResponse =
+                adminMemberClientAdapter.getPendingWithdrawals(pageable);
+        return clientResponse.map(memberMapper::toResponsePendingWithdrawalDTO);
+    }
+
     public AdminMemberResponse.DetailDTO getMember(Long memberId) {
         AdminMemberClientResponse.DetailDTO clientResponse = adminMemberClientAdapter.getMember(memberId);
         return memberMapper.toResponseDetailDTO(clientResponse);

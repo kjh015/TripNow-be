@@ -41,6 +41,10 @@ public interface AdminMemberClient {
                     LocalDate joinedTo,
             @SpringQueryMap Pageable pageable);
 
+    @GetMapping("/withdrawals/pending")
+    ApiResponse<PageResponse<AdminMemberClientResponse.PendingWithdrawalDTO>> getPendingWithdrawals(
+            @SpringQueryMap Pageable pageable);
+
     @GetMapping("/{memberId}")
     ApiResponse<AdminMemberClientResponse.DetailDTO> getMember(@PathVariable Long memberId);
 }

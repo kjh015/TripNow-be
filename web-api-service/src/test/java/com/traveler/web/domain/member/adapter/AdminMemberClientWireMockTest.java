@@ -108,6 +108,20 @@ class AdminMemberClientWireMockTest {
     }
 
     @Test
+    @DisplayName("탈퇴 미완료 조회는 member-service 경로로 페이지·정렬을 보낸다")
+    void getPendingWithdrawals_sendsPageable() {
+        WIRE_MOCK.stubFor(
+                get(urlPathEqualTo("/v1/admin/members/withdrawals/pending")).willReturn(okJson(EMPTY_PAGE)));
+
+        adminMemberClientAdapter.getPendingWithdrawals(PageRequest.of(1, 20, Sort.by(Sort.Direction.ASC, "createdAt")));
+
+        WIRE_MOCK.verify(getRequestedFor(urlPathEqualTo("/v1/admin/members/withdrawals/pending"))
+                .withQueryParam("page", equalTo("1"))
+                .withQueryParam("size", equalTo("20"))
+                .withQueryParam("sort", equalTo("createdAt,ASC")));
+    }
+
+    @Test
     @DisplayName("비운 조건은 쿼리 파라미터로 보내지 않는다")
     void getMembers_omitsEmptyCondition() {
         adminMemberClientAdapter.getMembers(
