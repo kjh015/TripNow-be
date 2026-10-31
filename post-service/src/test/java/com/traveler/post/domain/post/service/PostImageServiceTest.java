@@ -28,6 +28,10 @@ import com.traveler.post.global.s3.ImageType;
 import com.traveler.post.global.s3.S3Service;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,7 +39,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
@@ -51,8 +54,12 @@ class PostImageServiceTest {
     @Mock
     private PostImageMapper postImageMapper;
 
-    @InjectMocks
     private PostImageService postImageService;
+
+    @BeforeEach
+    void setUp() {
+        postImageService = new PostImageService(s3Service, postImageMapper, Runnable::run);
+    }
 
     @Test
     @DisplayName("발급 키는 temp/{memberId}/로 시작한다")
@@ -85,6 +92,86 @@ class PostImageServiceTest {
                 .isEqualTo(PostServiceErrorCode.S3_KEY_FORBIDDEN);
 
         verifyNoInteractions(s3Service);
+    }
+
+    @Test
+    @DisplayName("거부할 키가 하나라도 있으면 어떤 키도 S3에 조회하지 않는다")
+    void checksOwnershipOfAllKeysBeforeCallingS3() {
+        assertThatThrownBy(
+                        () -> postImageService.confirmUploads(MEMBER_ID, List.of(MEMBER_1_TEMP_KEY, MEMBER_2_TEMP_KEY)))
+                .isInstanceOf(PostServiceException.class)
+                .extracting("code")
+                .isEqualTo(PostServiceErrorCode.S3_KEY_FORBIDDEN);
+
+        verifyNoInteractions(s3Service);
+    }
+
+    @Test
+    @DisplayName("같은 키가 두 번 있으면 S3 호출 없이 POST_IMAGE_DUPLICATE로 거부된다")
+    void rejectsDuplicateKeys() {
+        assertThatThrownBy(
+                        () -> postImageService.confirmUploads(MEMBER_ID, List.of(MEMBER_1_TEMP_KEY, MEMBER_1_TEMP_KEY)))
+                .isInstanceOf(PostServiceException.class)
+                .extracting("code")
+                .isEqualTo(PostServiceErrorCode.POST_IMAGE_DUPLICATE);
+
+        verifyNoInteractions(s3Service);
+    }
+
+    @Test
+    @DisplayName("병렬 처리: 다른 작업이 먼저 실패해도 진행 중이던 복사가 끝난 뒤 그 사본까지 지운다")
+    void waitsForRunningCopyBeforeRollback() throws Exception {
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        PostImageService parallelService = new PostImageService(s3Service, postImageMapper, executor);
+        CountDownLatch failed = new CountDownLatch(1);
+        given(s3Service.headObject(MEMBER_1_TEMP_KEY)).willAnswer(invocation -> {
+            failed.await();
+            return size(1024L);
+        });
+        given(s3Service.headObject(MEMBER_1_TEMP_KEY_2)).willAnswer(invocation -> {
+            failed.countDown();
+            throw new PostServiceException(PostServiceErrorCode.S3_FILE_NOT_FOUND);
+        });
+
+        try {
+            assertThatThrownBy(() ->
+                            parallelService.confirmUploads(MEMBER_ID, List.of(MEMBER_1_TEMP_KEY, MEMBER_1_TEMP_KEY_2)))
+                    .isInstanceOf(PostServiceException.class)
+                    .extracting("code")
+                    .isEqualTo(PostServiceErrorCode.S3_FILE_NOT_FOUND);
+        } finally {
+            executor.shutdown();
+        }
+
+        ArgumentCaptor<String> copiedKey = ArgumentCaptor.forClass(String.class);
+        verify(s3Service).copyObject(eq(MEMBER_1_TEMP_KEY), copiedKey.capture());
+        verify(s3Service).deleteFilesByKeys(List.of(copiedKey.getValue()));
+    }
+
+    @Test
+    @DisplayName("병렬 처리: 늦게 끝난 작업이 있어도 요청 순서대로 키를 돌려준다")
+    void keepsRequestOrder() throws Exception {
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        PostImageService parallelService = new PostImageService(s3Service, postImageMapper, executor);
+        CountDownLatch secondDone = new CountDownLatch(1);
+        given(s3Service.headObject(MEMBER_1_TEMP_KEY)).willAnswer(invocation -> {
+            secondDone.await();
+            return size(1024L);
+        });
+        given(s3Service.headObject(MEMBER_1_TEMP_KEY_2)).willAnswer(invocation -> {
+            secondDone.countDown();
+            return size(1024L);
+        });
+
+        List<String> confirmed;
+        try {
+            confirmed = parallelService.confirmUploads(MEMBER_ID, List.of(MEMBER_1_TEMP_KEY, MEMBER_1_TEMP_KEY_2));
+        } finally {
+            executor.shutdown();
+        }
+
+        assertThat(confirmed.get(0)).endsWith(".png");
+        assertThat(confirmed.get(1)).endsWith(".jpg");
     }
 
     @Test

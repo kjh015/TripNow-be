@@ -15,6 +15,31 @@ public class AsyncConfig {
 
     public static final String OUTBOX_TASK_EXECUTOR = "outboxTaskExecutor";
     public static final String OUTBOX_STATUS_EXECUTOR = "outboxStatusExecutor";
+    public static final String POST_IMAGE_EXECUTOR = "postImageExecutor";
+
+    /**
+     * 게시글 이미지 확정(S3 HEAD + 복사)을 병렬로 처리한다. 차례로 처리하면 10장일 때 S3 시간만으로 Feign 제한(1.5초)을 넘을 수 있다.
+     * 요청 스레드는 작업이 모두 끝날 때까지 기다린다.
+     */
+    @Bean(name = POST_IMAGE_EXECUTOR)
+    public Executor postImageExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("post-image-");
+        // 큐가 가득 차면 요청 스레드가 직접 처리한다.
+        executor.setRejectedExecutionHandler(
+                new ThrottledRejectionLoggingHandler("PostImageExecutor", new ThreadPoolExecutor.CallerRunsPolicy()));
+        // 요청 스레드의 trace와 MDC userId를 작업 스레드로 옮긴다.
+        executor.setTaskDecorator(new ContextPropagatingTaskDecorator());
+        // 종료 시 진행 중인 요청의 복사를 마친다
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
+
+        executor.initialize();
+        return executor;
+    }
 
     @Bean(name = OUTBOX_TASK_EXECUTOR)
     public Executor outboxTaskExecutor() {

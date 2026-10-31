@@ -38,7 +38,7 @@ class PostFacadeTest {
     private final PostService postService = mock(PostService.class);
     private final S3Service s3Service = mock(S3Service.class);
     private final PostFacade facade =
-            new PostFacade(postService, new PostImageService(s3Service, mock(PostImageMapper.class)));
+            new PostFacade(postService, new PostImageService(s3Service, mock(PostImageMapper.class), Runnable::run));
 
     @BeforeEach
     void setUp() {

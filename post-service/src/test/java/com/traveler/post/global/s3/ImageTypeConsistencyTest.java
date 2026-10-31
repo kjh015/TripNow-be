@@ -46,7 +46,7 @@ class ImageTypeConsistencyTest {
 
     @BeforeEach
     void setUp() {
-        postImageService = new PostImageService(s3Service, postImageMapper);
+        postImageService = new PostImageService(s3Service, postImageMapper, Runnable::run);
         realS3Service = new S3Service(s3Client, s3Presigner);
     }
 

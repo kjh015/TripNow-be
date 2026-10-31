@@ -13,7 +13,10 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -47,6 +50,8 @@ class PostImageS3IntegrationTest {
             .withExposedPorts(4566)
             .waitingFor(Wait.forHttp("/_localstack/health").forPort(4566));
 
+    private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(4);
+
     private static S3Client s3Client;
     private static S3Presigner s3Presigner;
     private static S3Service s3Service;
@@ -77,11 +82,12 @@ class PostImageS3IntegrationTest {
         s3Service = new S3Service(s3Client, s3Presigner);
         ReflectionTestUtils.setField(s3Service, "bucket", BUCKET);
         ReflectionTestUtils.setField(s3Service, "presignedUrlDurationMinutes", 10);
-        postImageService = new PostImageService(s3Service, mock(PostImageMapper.class));
+        postImageService = new PostImageService(s3Service, mock(PostImageMapper.class), EXECUTOR);
     }
 
     @AfterAll
     static void stopLocalStack() {
+        EXECUTOR.shutdown();
         s3Client.close();
         s3Presigner.close();
         LOCALSTACK.stop();
@@ -101,6 +107,22 @@ class PostImageS3IntegrationTest {
         assertThat(copied.asByteArray()).isEqualTo(content);
         assertThat(copied.response().contentType()).isEqualTo(IMAGE_TYPE.getContentType());
         assertThat(read(tempKey).asByteArray()).isEqualTo(content);
+    }
+
+    @Test
+    @DisplayName("10장을 병렬로 확정해도 요청 순서대로 키를 돌려주고 내용이 섞이지 않는다")
+    void confirmsTenFilesInParallelKeepingOrder() throws Exception {
+        List<String> tempKeys = new ArrayList<>();
+        for (byte i = 0; i < 10; i++) {
+            tempKeys.add(upload(new byte[] {i}));
+        }
+
+        List<String> postKeys = postImageService.confirmUploads(MEMBER_ID, tempKeys);
+
+        assertThat(postKeys).hasSize(10).doesNotHaveDuplicates();
+        for (byte i = 0; i < 10; i++) {
+            assertThat(read(postKeys.get(i)).asByteArray()).containsExactly(i);
+        }
     }
 
     @Test

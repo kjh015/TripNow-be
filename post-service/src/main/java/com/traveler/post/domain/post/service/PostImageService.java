@@ -3,25 +3,37 @@ package com.traveler.post.domain.post.service;
 import com.traveler.post.domain.post.dto.response.PostImageResponse;
 import com.traveler.post.domain.post.mapper.PostImageMapper;
 import com.traveler.post.domain.post.support.PostImageKey;
+import com.traveler.post.global.config.AsyncConfig;
 import com.traveler.post.global.exception.PostServiceException;
 import com.traveler.post.global.exception.code.PostServiceErrorCode;
 import com.traveler.post.global.s3.ImageType;
 import com.traveler.post.global.s3.S3Service;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
-import lombok.RequiredArgsConstructor;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class PostImageService {
     private final S3Service s3Service;
     private final PostImageMapper postImageMapper;
+    private final Executor postImageExecutor;
+
+    public PostImageService(
+            S3Service s3Service,
+            PostImageMapper postImageMapper,
+            @Qualifier(AsyncConfig.POST_IMAGE_EXECUTOR) Executor postImageExecutor) {
+        this.s3Service = s3Service;
+        this.postImageMapper = postImageMapper;
+        this.postImageExecutor = postImageExecutor;
+    }
 
     public PostImageResponse.PresignedUrlDTO getPresignedUrl(Long memberId, String fileName, String contentType) {
         ImageType imageType = validateFile(fileName, contentType);
@@ -45,16 +57,38 @@ public class PostImageService {
     public List<String> confirmUploads(Long memberId, List<String> keys, List<String> currentKeys) {
         if (keys == null) return null;
 
+        // 보관 키는 확정마다 새로 만들어져 저장 단계에서 중복을 찾을 수 없으므로 여기서 거른다
+        if (new HashSet<>(keys).size() != keys.size()) {
+            throw new PostServiceException(PostServiceErrorCode.POST_IMAGE_DUPLICATE);
+        }
+
         Set<String> attached = new HashSet<>(currentKeys);
-        List<String> confirmed = new ArrayList<>();
-        try {
-            for (String key : keys) {
-                confirmed.add(attached.contains(key) ? key : confirm(memberId, key));
-            }
-        } catch (RuntimeException e) {
-            // 일부만 복사한 뒤 실패하면 앞서 만든 사본을 되돌린다. posts/는 lifecycle 대상이 아니라 남으면 지워지지 않는다
+        // S3를 호출하기 전에 모든 키의 소유권을 확인한다
+        keys.stream().filter(key -> !attached.contains(key)).forEach(key -> validateIssuedFor(memberId, key));
+
+        List<CompletableFuture<String>> confirms = keys.stream()
+                .map(key -> attached.contains(key)
+                        ? CompletableFuture.completedFuture(key)
+                        : CompletableFuture.supplyAsync(() -> confirm(memberId, key), postImageExecutor))
+                .toList();
+
+        // 실패가 있어도 모든 작업이 끝날 때까지 기다린다. 먼저 돌아가면 진행 중이던 복사의 사본을 되돌리지 못한다
+        CompletableFuture.allOf(confirms.toArray(CompletableFuture[]::new))
+                .exceptionally(e -> null)
+                .join();
+
+        List<String> confirmed = confirms.stream()
+                .filter(confirm -> !confirm.isCompletedExceptionally())
+                .map(CompletableFuture::join)
+                .toList();
+        Optional<CompletableFuture<String>> failed = confirms.stream()
+                .filter(CompletableFuture::isCompletedExceptionally)
+                .findFirst();
+        if (failed.isPresent()) {
+            // 일부만 복사하고 실패하면 사본을 되돌린다. posts/는 lifecycle 대상이 아니라 남으면 지워지지 않는다
             deleteCopies(findCopiedKeys(confirmed, attached));
-            throw e;
+            Throwable cause = failed.get().exceptionNow();
+            throw cause instanceof RuntimeException e ? e : new IllegalStateException(cause);
         }
         return confirmed;
     }
@@ -79,19 +113,22 @@ public class PostImageService {
         }
     }
 
-    private String confirm(Long memberId, String tempKey) {
-        // 1. 이 사용자에게 발급된 키인가
+    // 이 사용자에게 발급된 키인가
+    private void validateIssuedFor(Long memberId, String tempKey) {
         if (!PostImageKey.isIssuedFor(memberId, tempKey)) {
             throw new PostServiceException(PostServiceErrorCode.S3_KEY_FORBIDDEN);
         }
-        // 2. 실제로 올라와 있는가, 크기는 허용 범위인가
+    }
+
+    private String confirm(Long memberId, String tempKey) {
+        // 1. 실제로 올라와 있는가, 크기는 허용 범위인가
         HeadObjectResponse metadata = s3Service.headObject(tempKey);
         if (metadata.contentLength() > S3Service.MAX_FILE_SIZE) {
             log.warn("Oversized post image deleted. key={}, size={}", tempKey, metadata.contentLength());
             s3Service.deleteFilesByKeys(List.of(tempKey));
             throw new PostServiceException(PostServiceErrorCode.S3_FILE_TOO_LARGE);
         }
-        // 3. 보관 자리로 복사. temp/ 원본은 lifecycle 규칙이 지운다
+        // 2. 보관 자리로 복사. temp/ 원본은 lifecycle 규칙이 지운다
         String finalKey = PostImageKey.createPostKey(memberId, tempKey);
         s3Service.copyObject(tempKey, finalKey);
         return finalKey;
