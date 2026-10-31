@@ -19,4 +19,8 @@ public class LikeSearchCommandService {
     public void removeDocument(LikeSearchMessage.RemovedDTO dto) {
         likeDocumentRepository.deleteById(dto.likeId());
     }
+
+    public void removeDocuments(LikeSearchMessage.BatchRemovedDTO dto) {
+        likeDocumentRepository.deleteAllById(dto.likeIds());
+    }
 }

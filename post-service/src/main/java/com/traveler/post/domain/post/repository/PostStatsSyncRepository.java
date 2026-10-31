@@ -23,7 +23,7 @@ import org.springframework.stereotype.Repository;
 @RequiredArgsConstructor
 public class PostStatsSyncRepository {
 
-    private static final String IDEMPOTENCY_PREFIX = "idempotency:trace:";
+    private static final String IDEMPOTENCY_PREFIX = "idempotency:event:";
     private static final String VIEW_COUNT_BUFFER_KEY = "post:view_count:buffer";
     private static final String VIEW_COUNT_PROCESSING_KEY = "post:view_count:processing";
     private static final String STATS_UPDATED_BUFFER_KEY = "post:stats:updated";
@@ -65,14 +65,14 @@ public class PostStatsSyncRepository {
     /**
      * 최초 이벤트일 때만 조회수를 1 증가시키고 true 를 반환합니다. (중복이면 false)
      *
-     * @param traceId 멱등성 판별용 traceId
+     * @param eventId 멱등성 판별용 이벤트 ID
      * @param postId  조회수를 증가시킬 게시글 ID
      * @param ttl     멱등성 키 TTL
      */
-    public boolean incrementViewCountIfFirst(String traceId, Long postId, Duration ttl) {
+    public boolean incrementViewCountIfFirst(String eventId, Long postId, Duration ttl) {
         Long result = redisTemplate.execute(
                 INCREMENT_IF_FIRST_SCRIPT,
-                List.of(IDEMPOTENCY_PREFIX + traceId, VIEW_COUNT_BUFFER_KEY),
+                List.of(IDEMPOTENCY_PREFIX + eventId, VIEW_COUNT_BUFFER_KEY),
                 String.valueOf(ttl.toMillis()),
                 String.valueOf(postId));
         return Long.valueOf(1L).equals(result);

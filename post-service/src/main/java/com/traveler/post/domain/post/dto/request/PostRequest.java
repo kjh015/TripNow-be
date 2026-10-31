@@ -31,7 +31,7 @@ public final class PostRequest {
             @Size(max = 10, message = "이미지는 최대 10개까지 업로드 가능합니다.")
                     @Schema(
                             description = "S3 이미지 키 리스트",
-                            example = "[\"posts/1/3f2b8c1e-5d4a-4e6b-9c7d-1a2b3c4d5e6f.png\"]")
+                            example = "[\"temp/1/3f2b8c1e-5d4a-4e6b-9c7d-1a2b3c4d5e6f.png\"]")
                     List<String> images) {}
 
     @Schema(name = "PostUpdateRequest")
@@ -51,6 +51,6 @@ public final class PostRequest {
             @Size(max = 10, message = "이미지는 최대 10개까지 업로드 가능합니다.")
                     @Schema(
                             description = "S3 이미지 키 리스트",
-                            example = "[\"posts/1/3f2b8c1e-5d4a-4e6b-9c7d-1a2b3c4d5e6f.png\"]")
+                            example = "[\"temp/1/3f2b8c1e-5d4a-4e6b-9c7d-1a2b3c4d5e6f.png\"]")
                     List<String> images) {}
 }

@@ -4,6 +4,7 @@ import com.traveler.post.domain.post.entity.Post;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -16,6 +17,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             + "LEFT JOIN FETCH p.images im "
             + "WHERE p.id = :postId ")
     Optional<Post> findByIdWithDetails(Long postId);
+
+    // 탈퇴 회원 정리. 소프트 삭제된 게시글은 @SQLRestriction으로 빠진다
+    List<Post> findByMemberIdOrderByIdAsc(Long memberId, Limit limit);
 
     @Query("SELECT pi.imageKey FROM PostImage pi WHERE pi.post.id IN :postIds")
     List<String> findImageKeysByPostIds(@Param("postIds") List<Long> postIds);

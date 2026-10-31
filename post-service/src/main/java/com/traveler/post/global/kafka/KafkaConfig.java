@@ -14,6 +14,7 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
 import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.ConsumerRecordRecoverer;
+import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.util.backoff.FixedBackOff;
@@ -68,7 +69,7 @@ public class KafkaConfig {
         if (concurrency != null) {
             factory.setConcurrency(concurrency);
         }
-        var ackMode = kafkaProperties.getListener().getAckMode();
+        ContainerProperties.AckMode ackMode = kafkaProperties.getListener().getAckMode();
         if (ackMode != null) {
             factory.getContainerProperties().setAckMode(ackMode);
         }

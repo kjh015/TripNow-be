@@ -45,9 +45,9 @@ class PostStatsSlotsTest {
     @Test
     @DisplayName("고른 슬롯이 없으면(게시글 없음) POST_NOT_FOUND")
     void randomSlotMissing() {
-        given(postStatsRepository.findSlotForUpdate(eq(10L), anyInt())).willReturn(Optional.empty());
+        given(postStatsRepository.findSlotWithLock(eq(10L), anyInt())).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> postStatsSlots.getRandomForUpdate(10L))
+        assertThatThrownBy(() -> postStatsSlots.getRandom(10L))
                 .isInstanceOf(PostServiceException.class)
                 .extracting("code")
                 .isEqualTo(PostServiceErrorCode.POST_NOT_FOUND);

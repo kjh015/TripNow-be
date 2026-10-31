@@ -118,7 +118,7 @@ app:
       filter-stream: "user-activity-service.process.filter.stream"
       dedup-stream: "user-activity-service.process.dedup.stream"
       sink-stream: "user-activity-service.process.sink.stream"
-      view-events: "user-activity-service.post.events.viewed"
+      sink-events: "user-activity-service.sink.events"
     groups:
       format: "user-activity-format-group"
       filter: "user-activity-filter-group"

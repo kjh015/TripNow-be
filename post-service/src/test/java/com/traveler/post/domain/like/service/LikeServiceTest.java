@@ -69,7 +69,7 @@ class LikeServiceTest {
                 .isEqualTo(PostServiceErrorCode.POST_NOT_FOUND);
 
         verify(likeRepository, never()).insertIfAbsent(anyLong(), anyLong(), any());
-        verify(postStatsSlots, never()).getRandomForUpdate(anyLong());
+        verify(postStatsSlots, never()).getRandom(anyLong());
     }
 
     @Test
@@ -85,7 +85,7 @@ class LikeServiceTest {
         LikeResponse.StatsDTO result = likeService.addLike(new LikeRequest.AddDTO(POST_ID), MEMBER_ID);
 
         assertThat(result).isEqualTo(response);
-        verify(postStatsSlots, never()).getRandomForUpdate(anyLong());
+        verify(postStatsSlots, never()).getRandom(anyLong());
         verify(eventPublisher, never()).publishEvent(any());
     }
 
@@ -101,7 +101,7 @@ class LikeServiceTest {
         given(postRepository.existsById(POST_ID)).willReturn(true);
         given(likeRepository.insertIfAbsent(eq(POST_ID), eq(MEMBER_ID), any())).willReturn(1);
         given(likeRepository.findByPostIdAndMemberId(POST_ID, MEMBER_ID)).willReturn(Optional.of(like));
-        given(postStatsSlots.getRandomForUpdate(POST_ID)).willReturn(slot);
+        given(postStatsSlots.getRandom(POST_ID)).willReturn(slot);
         given(likeMapper.toAddedEvent(like)).willReturn(event);
         PostStatsSummary stats = new PostStatsSummary(POST_ID, 8L, 0L, 0L);
         LikeResponse.StatsDTO response = new LikeResponse.StatsDTO(POST_ID, 8L);
@@ -112,7 +112,7 @@ class LikeServiceTest {
 
         InOrder order = inOrder(likeRepository, postStatsSlots, eventPublisher);
         order.verify(likeRepository).insertIfAbsent(eq(POST_ID), eq(MEMBER_ID), any());
-        order.verify(postStatsSlots).getRandomForUpdate(POST_ID);
+        order.verify(postStatsSlots).getRandom(POST_ID);
         order.verify(eventPublisher).publishEvent(event);
         verify(eventPublisher, times(1)).publishEvent(any(Object.class));
         assertThat(slot.getLikeCount()).isEqualTo(1);
@@ -132,7 +132,7 @@ class LikeServiceTest {
         LikeResponse.StatsDTO result = likeService.removeLike(POST_ID, MEMBER_ID);
 
         assertThat(result).isEqualTo(response);
-        verify(postStatsSlots, never()).getRandomForUpdate(anyLong());
+        verify(postStatsSlots, never()).getRandom(anyLong());
         verify(eventPublisher, never()).publishEvent(any());
     }
 
@@ -147,7 +147,7 @@ class LikeServiceTest {
 
         likeService.removeLike(POST_ID, MEMBER_ID);
 
-        verify(postStatsSlots, never()).getRandomForUpdate(anyLong());
+        verify(postStatsSlots, never()).getRandom(anyLong());
         verify(eventPublisher, never()).publishEvent(any());
     }
 
@@ -160,7 +160,7 @@ class LikeServiceTest {
         given(postRepository.existsById(POST_ID)).willReturn(true);
         given(likeRepository.findByPostIdAndMemberId(POST_ID, MEMBER_ID)).willReturn(Optional.of(like));
         given(likeRepository.deleteIfPresent(5L)).willReturn(1);
-        given(postStatsSlots.getRandomForUpdate(POST_ID)).willReturn(slot);
+        given(postStatsSlots.getRandom(POST_ID)).willReturn(slot);
         given(likeMapper.toRemovedEvent(like)).willReturn(event);
         given(postStatsSlots.summarize(POST_ID)).willReturn(PostStatsSummary.empty(POST_ID));
 

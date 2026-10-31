@@ -65,9 +65,7 @@ public class Member extends BaseEntity {
     private Instant deletedAt;
 
     public void delete() {
-        if (this.isDeleted) {
-            return;
-        }
+        validateNotDeleted();
         this.isDeleted = true;
         this.deletedAt = Instant.now();
 

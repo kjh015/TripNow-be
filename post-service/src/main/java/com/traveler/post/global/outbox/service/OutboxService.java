@@ -97,7 +97,7 @@ public class OutboxService {
         log.info("[OutboxCleanup] 총 {}건의 완료된 메시지 정리 완료", totalDeleted);
     }
 
-    // 같은 aggregate(게시글·댓글·좋아요)의 이벤트가 같은 파티션에 들어가도록 aggregateId를 키로 쓴다
+    // aggregateId가 같은 이벤트가 같은 파티션에 들어가도록 키로 쓴다. 댓글·좋아요는 게시글 ID를 넘긴다
     private static String partitionKey(Long aggregateId) {
         return aggregateId == null ? null : aggregateId.toString();
     }

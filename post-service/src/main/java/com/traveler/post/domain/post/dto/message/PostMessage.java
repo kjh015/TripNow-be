@@ -47,6 +47,4 @@ public final class PostMessage {
     // syncedAt: 발행 시각(epoch ms). 검색 서버는 이보다 오래된 통계로 덮어쓰지 않는다(재전송·순서 뒤바뀜 대비)
     public record UpdateStatDTO(
             Long postId, Double starAvg, Long commentCount, Long likeCount, Long viewCount, Long syncedAt) {}
-
-    public record PostViewedDTO(Long postId, String traceId) {}
 }

@@ -6,6 +6,7 @@ import com.traveler.member.domain.member.dto.request.MemberRequest;
 import com.traveler.member.domain.member.dto.response.MemberResponse;
 import com.traveler.member.domain.member.entity.Member;
 import com.traveler.member.domain.member.enums.RoleType;
+import com.traveler.member.domain.member.enums.WithdrawalReason;
 import com.traveler.member.domain.member.mapper.MemberMapper;
 import com.traveler.member.domain.member.repository.MemberRepository;
 import com.traveler.member.global.exception.MemberServiceException;
@@ -14,6 +15,7 @@ import com.traveler.member.global.util.DuplicateKeyUtil;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -29,6 +31,7 @@ public class MemberCommandService {
     private final MemberMapper memberMapper;
     private final PasswordEncoder passwordEncoder;
     private final AuthTokenRevoker authTokenRevoker;
+    private final ApplicationEventPublisher eventPublisher;
 
     public MemberResponse.SignUpDTO signUp(MemberRequest.SignUpDTO dto) {
         if (memberRepository.existsByLoginIdAndIsDeletedFalse(dto.loginId())) {
@@ -66,6 +69,8 @@ public class MemberCommandService {
                 .findById(memberId)
                 .orElseThrow(() -> new MemberServiceException(MemberServiceErrorCode.MEMBER_NOT_FOUND));
         member.delete();
+
+        eventPublisher.publishEvent(memberMapper.toWithdrawnEvent(member, WithdrawalReason.USER));
 
         // Redis 실패로 탈퇴를 막지 않는다. reissue가 탈퇴 회원을 거부하므로 남은 액세스 토큰은 만료 시까지만 유효
         try {

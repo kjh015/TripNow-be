@@ -18,6 +18,11 @@ public class LikeEventListener {
 
     @EventListener
     public void handleDeletedEvent(LikeEvent.Removed event) {
-        likeOutboxPublisher.publishRemoved(event.likeMsg());
+        likeOutboxPublisher.publishRemoved(event.likeMsg(), event.postId());
+    }
+
+    @EventListener
+    public void handleBatchRemovedEvent(LikeEvent.BatchRemoved event) {
+        likeOutboxPublisher.publishBatchRemoved(event.likeMsg());
     }
 }

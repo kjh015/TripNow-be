@@ -17,4 +17,12 @@ public final class LikeEvent {
     }
 
     public record Removed(LikeMessage.RemovedDTO likeMsg, Long postId) implements PostEvent.StatsUpdate {}
+
+    // 탈퇴 회원 정리. 한 게시글의 좋아요를 묶어 보낸다
+    public record BatchRemoved(LikeMessage.BatchRemovedDTO likeMsg) implements PostEvent.StatsUpdate {
+        @Override
+        public Long postId() {
+            return likeMsg.postId();
+        }
+    }
 }

@@ -46,7 +46,7 @@ class ImageTypeConsistencyTest {
 
     @BeforeEach
     void setUp() {
-        postImageService = new PostImageService(s3Service, postImageMapper);
+        postImageService = new PostImageService(s3Service, postImageMapper, Runnable::run);
         realS3Service = new S3Service(s3Client, s3Presigner);
     }
 
@@ -77,7 +77,7 @@ class ImageTypeConsistencyTest {
 
         verify(s3Service)
                 .generatePresignedUrl(
-                        matches("^posts/1/[0-9a-f-]{36}\\." + type.getExtension() + "$"), eq(type.getContentType()));
+                        matches("^temp/1/[0-9a-f-]{36}\\." + type.getExtension() + "$"), eq(type.getContentType()));
     }
 
     @Test

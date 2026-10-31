@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.traveler.search.domain.like.dto.message.LikeSearchMessage;
 import com.traveler.search.domain.like.service.LikeSearchCommandService;
 import java.time.Instant;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -61,5 +62,14 @@ class LikeSearchMessageConsumerTest {
 
         verifyNoInteractions(commandService);
         verify(ack, times(2)).acknowledge();
+    }
+
+    @Test
+    @DisplayName("BATCH_REMOVED는 묶인 좋아요를 모두 삭제한다")
+    void batchRemoved() {
+        consumer.consume("{\"postId\":10,\"likeIds\":[5,6]}", "BATCH_REMOVED", "10", "event-6", ack);
+
+        verify(commandService).removeDocuments(new LikeSearchMessage.BatchRemovedDTO(10L, List.of(5L, 6L)));
+        verify(ack).acknowledge();
     }
 }

@@ -29,10 +29,10 @@ public class PostStatsSlots {
      * 무작위 슬롯 하나를 잠그고 읽는다. 같은 게시글의 요청이 한 행에 몰리지 않게 한다. 잠긴 행은 커밋까지 풀리지 않으므로 좋아요·댓글
      * 처리의 마지막에 호출한다. 슬롯이 없으면 게시글이 없는 것이므로 POST_NOT_FOUND(앞선 쓰기도 되돌린다).
      */
-    public PostStats getRandomForUpdate(Long postId) {
+    public PostStats getRandom(Long postId) {
         int slot = ThreadLocalRandom.current().nextInt(PostStats.SLOT_COUNT);
         return postStatsRepository
-                .findSlotForUpdate(postId, slot)
+                .findSlotWithLock(postId, slot)
                 .orElseThrow(() -> new PostServiceException(PostServiceErrorCode.POST_NOT_FOUND));
     }
 

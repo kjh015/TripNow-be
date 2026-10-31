@@ -50,6 +50,10 @@ public class CommentSearchMessageConsumer {
                 commentSearchCommandService.deleteDocument(
                         objectMapper.readValue(payload, CommentSearchMessage.DeletedDTO.class));
             }
+            case "BATCH_DELETED" -> {
+                commentSearchCommandService.deleteDocuments(
+                        objectMapper.readValue(payload, CommentSearchMessage.BatchDeletedDTO.class));
+            }
             default -> log.warn("지원하지 않는 이벤트 타입입니다: {}", eventType);
         }
         // 모든 처리가 정상일 때만 커밋

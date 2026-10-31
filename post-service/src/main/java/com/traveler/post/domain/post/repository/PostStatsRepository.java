@@ -18,7 +18,7 @@ public interface PostStatsRepository extends JpaRepository<PostStats, PostStatsI
     // 슬롯 고르기와 합계 조립은 PostStatsSlots. 락 대기 제한은 커넥션 세션의 innodb_lock_wait_timeout(3초)이 건다
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM PostStats s WHERE s.id.postId = :postId AND s.id.slot = :slot")
-    Optional<PostStats> findSlotForUpdate(@Param("postId") Long postId, @Param("slot") int slot);
+    Optional<PostStats> findSlotWithLock(@Param("postId") Long postId, @Param("slot") int slot);
 
     @Query("SELECT new com.traveler.post.domain.post.dto.result.PostStatsSummary("
             + "s.id.postId, SUM(s.likeCount), SUM(s.commentCount), SUM(s.starSum)) "

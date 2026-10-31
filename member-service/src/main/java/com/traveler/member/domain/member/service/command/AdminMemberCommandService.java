@@ -8,12 +8,14 @@ import com.traveler.member.domain.auth.support.AuthTokenRevoker;
 import com.traveler.member.domain.member.dto.response.AdminMemberResponse;
 import com.traveler.member.domain.member.entity.Member;
 import com.traveler.member.domain.member.enums.RoleType;
+import com.traveler.member.domain.member.enums.WithdrawalReason;
 import com.traveler.member.domain.member.mapper.MemberMapper;
 import com.traveler.member.domain.member.repository.MemberRepository;
 import com.traveler.member.global.exception.MemberServiceException;
 import com.traveler.member.global.exception.code.MemberServiceErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,7 @@ public class AdminMemberCommandService {
     private final MemberMapper memberMapper;
     private final AuthTokenRevoker authTokenRevoker;
     private final AuditLogger auditLogger;
+    private final ApplicationEventPublisher eventPublisher;
 
     public AdminMemberResponse.GrantAdminDTO grantAdminRole(Long memberId) {
         Member member = memberRepository
@@ -45,6 +48,8 @@ public class AdminMemberCommandService {
                 .orElseThrow(() -> new MemberServiceException(MemberServiceErrorCode.MEMBER_NOT_FOUND));
 
         member.delete();
+
+        eventPublisher.publishEvent(memberMapper.toWithdrawnEvent(member, WithdrawalReason.ADMIN));
         auditLogger.log(DELETE_MEMBER, memberId);
 
         // 대상의 액세스 토큰은 알 수 없어 재발급만 막는다(남은 액세스 토큰은 만료 시까지 유효)

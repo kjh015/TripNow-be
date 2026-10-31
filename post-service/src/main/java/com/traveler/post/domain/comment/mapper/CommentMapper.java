@@ -7,6 +7,7 @@ import com.traveler.post.domain.comment.dto.response.CommentResponse;
 import com.traveler.post.domain.comment.entity.Comment;
 import com.traveler.post.domain.post.dto.result.PostStatsSummary;
 import com.traveler.post.domain.post.entity.Post;
+import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
@@ -55,6 +56,11 @@ public interface CommentMapper {
     default CommentEvent.Updated toUpdatedEvent(Comment comment) {
         return new CommentEvent.Updated(
                 toUpdatedMsgDTO(comment), comment.getPost().getId());
+    }
+
+    default CommentEvent.BatchDeleted toBatchDeletedEvent(Long postId, List<Comment> comments) {
+        return new CommentEvent.BatchDeleted(new CommentMessage.BatchDeletedDTO(
+                postId, comments.stream().map(Comment::getId).toList()));
     }
 
     default CommentEvent.Deleted toDeletedEvent(Comment comment) {

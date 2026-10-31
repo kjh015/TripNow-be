@@ -103,4 +103,6 @@ app:
       post-commands: "post-service.post.commands"
       comment-events: "post-service.comment.events"
       like-events: "post-service.like.events"
-      view-events: "user-activity-service.post.events.viewed"
+      sink-events: "user-activity-service.sink.events"
+      member-events: "member-service.member.events"
+      content-events: "post-service.content.events"

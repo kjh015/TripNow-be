@@ -21,6 +21,14 @@ public final class CommentEvent {
 
     public record Deleted(CommentMessage.DeletedDTO commentMsg, Long postId) implements PostEvent.StatsUpdate {}
 
+    // 탈퇴 회원 정리. 한 게시글의 댓글을 묶어 보낸다
+    public record BatchDeleted(CommentMessage.BatchDeletedDTO commentMsg) implements PostEvent.StatsUpdate {
+        @Override
+        public Long postId() {
+            return commentMsg.postId();
+        }
+    }
+
     // 부모 게시물이 이미 삭제되어 통계 갱신 없이 댓글 삭제 메시지만 발행하는 어드민 전용 이벤트
-    public record AdminDeleted(CommentMessage.DeletedDTO commentMsg) {}
+    public record AdminDeleted(CommentMessage.DeletedDTO commentMsg, Long postId) {}
 }

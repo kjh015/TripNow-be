@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.traveler.search.domain.comment.dto.message.CommentSearchMessage;
 import com.traveler.search.domain.comment.service.CommentSearchCommandService;
 import java.time.Instant;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -71,5 +72,14 @@ class CommentSearchMessageConsumerTest {
 
         verifyNoInteractions(commandService);
         verify(ack, times(2)).acknowledge();
+    }
+
+    @Test
+    @DisplayName("BATCH_DELETED는 묶인 댓글을 모두 삭제한다")
+    void batchDeleted() {
+        consumer.consume("{\"postId\":10,\"commentIds\":[5,6]}", "BATCH_DELETED", "10", "event-6", ack);
+
+        verify(commandService).deleteDocuments(new CommentSearchMessage.BatchDeletedDTO(10L, List.of(5L, 6L)));
+        verify(ack).acknowledge();
     }
 }

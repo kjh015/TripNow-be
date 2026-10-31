@@ -29,6 +29,9 @@ public enum MemberServiceErrorCode implements BaseErrorCode {
     BLACKLISTED_TOKEN(401, "AUTH401_8", "로그아웃된 토큰입니다. 다시 로그인해주세요."),
     TOKEN_REISSUE_FAILED(401, "AUTH401_9", "토큰 재발급에 실패했습니다."),
     REFRESH_TOKEN_NOT_FOUND(404, "AUTH404_2", "존재하지 않거나 만료된 리프레시 토큰입니다."),
+
+    // Infra - Kafka
+    TOPIC_NOT_CONFIGURED(500, "EVENT500_1", "해당 이벤트 타입에 대한 Kafka 토픽 설정이 누락되었습니다."),
     ;
 
     private final int status;
