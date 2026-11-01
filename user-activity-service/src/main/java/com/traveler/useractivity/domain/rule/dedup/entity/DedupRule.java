@@ -1,7 +1,7 @@
 package com.traveler.useractivity.domain.rule.dedup.entity;
 
 import com.traveler.common.db.entity.BaseEntity;
-import com.traveler.useractivity.domain.rule.dedup.vo.DedupSpec;
+import com.traveler.useractivity.domain.rule.dedup.definition.DedupSpec;
 import com.traveler.useractivity.domain.rule.process.entity.LogProcess;
 import com.traveler.useractivity.global.exception.UserActivityServiceException;
 import com.traveler.useractivity.global.exception.code.UserActivityServiceErrorCode;
@@ -33,7 +33,7 @@ public class DedupRule extends BaseEntity {
     private String name;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    private List<DedupSpec.Rule> rules;
+    private List<DedupSpec> rules;
 
     private boolean isActive;
 
@@ -50,7 +50,7 @@ public class DedupRule extends BaseEntity {
         this.deletedAt = Instant.now();
     }
 
-    public void update(String name, List<DedupSpec.Rule> rules, boolean isActive) {
+    public void update(String name, List<DedupSpec> rules, boolean isActive) {
         validateNotDeleted();
         this.name = name;
         this.rules = rules;

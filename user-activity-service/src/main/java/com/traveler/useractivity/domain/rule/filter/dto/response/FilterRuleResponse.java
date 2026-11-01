@@ -1,6 +1,6 @@
 package com.traveler.useractivity.domain.rule.filter.dto.response;
 
-import com.traveler.useractivity.domain.rule.filter.vo.FilterNode;
+import com.traveler.useractivity.domain.rule.filter.definition.FilterToken;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
@@ -33,6 +33,6 @@ public final class FilterRuleResponse {
             @Schema(description = "필터 규칙 ID", example = "1") Long filterRuleId,
             @Schema(description = "필터 규칙 이름", example = "에러 로그만 필터링") String name,
             @Schema(description = "필터 규칙의 SpEL 표현식", example = "field == 'ERROR'") String expression,
-            @Schema(description = "필터 조건 노드 목록") List<FilterNode.Element> conditions,
+            @Schema(description = "필터 조건 토큰 목록") List<FilterToken> conditions,
             @Schema(description = "활성화 여부", example = "true") boolean isActive) {}
 }

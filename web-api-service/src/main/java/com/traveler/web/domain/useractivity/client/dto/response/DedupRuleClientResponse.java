@@ -17,5 +17,5 @@ public final class DedupRuleClientResponse {
 
     public record ListDTO(Long dedupRuleId, String name, Instant createdAt, Instant updatedAt, boolean isActive) {}
 
-    public record DetailDTO(Long dedupRuleId, String name, List<DedupClientSpec.Rule> rules, boolean isActive) {}
+    public record DetailDTO(Long dedupRuleId, String name, List<DedupClientSpec> rules, boolean isActive) {}
 }

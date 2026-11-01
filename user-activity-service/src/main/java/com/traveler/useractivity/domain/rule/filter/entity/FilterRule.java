@@ -1,7 +1,7 @@
 package com.traveler.useractivity.domain.rule.filter.entity;
 
 import com.traveler.common.db.entity.BaseEntity;
-import com.traveler.useractivity.domain.rule.filter.vo.FilterNode;
+import com.traveler.useractivity.domain.rule.filter.definition.FilterToken;
 import com.traveler.useractivity.domain.rule.process.entity.LogProcess;
 import com.traveler.useractivity.global.exception.UserActivityServiceException;
 import com.traveler.useractivity.global.exception.code.UserActivityServiceErrorCode;
@@ -36,7 +36,7 @@ public class FilterRule extends BaseEntity {
     private String expression;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    private List<FilterNode.Element> conditions;
+    private List<FilterToken> conditions;
 
     private boolean isActive;
 
@@ -53,7 +53,7 @@ public class FilterRule extends BaseEntity {
         this.deletedAt = Instant.now();
     }
 
-    public void update(String name, String expression, List<FilterNode.Element> conditions, boolean isActive) {
+    public void update(String name, String expression, List<FilterToken> conditions, boolean isActive) {
         validateNotDeleted();
         this.name = name;
         this.expression = expression;

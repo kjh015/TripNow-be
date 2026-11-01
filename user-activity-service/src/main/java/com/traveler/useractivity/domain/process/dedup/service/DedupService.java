@@ -3,8 +3,8 @@ package com.traveler.useractivity.domain.process.dedup.service;
 import com.traveler.useractivity.domain.process.dedup.model.ActiveDedupRule;
 import com.traveler.useractivity.domain.process.dedup.model.DedupResult;
 import com.traveler.useractivity.domain.process.dedup.repository.DedupHistoryRepository;
+import com.traveler.useractivity.domain.rule.dedup.definition.DedupSpec;
 import com.traveler.useractivity.domain.rule.dedup.enums.MatchType;
-import com.traveler.useractivity.domain.rule.dedup.vo.DedupSpec;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -31,16 +31,16 @@ public class DedupService {
         }
 
         for (ActiveDedupRule rule : activeDedupRules) {
-            for (DedupSpec.Rule specRule : rule.specRules()) {
+            for (DedupSpec spec : rule.specs()) {
                 // 1. 현재 로그가 해당 스펙의 조건 대상인지 확인
-                if (!matchesConditions(specRule.conditions(), logData)) {
+                if (!matchesConditions(spec.conditions(), logData)) {
                     continue; // 대상이 아니면 다음 스펙 검사
                 }
 
                 // 2. 대상인 경우 Redis 원자적 저장(중복 검사) 수행
-                if (isDuplicateEntry(rule, specRule, logData)) {
+                if (isDuplicateEntry(rule, spec, logData)) {
                     // 중복 발견 시 런타임 컨텍스트를 즉시 반환
-                    return Optional.of(new DedupResult(rule, specRule));
+                    return Optional.of(new DedupResult(rule, spec));
                 }
             }
         }
@@ -77,9 +77,9 @@ public class DedupService {
     /**
      * Redis에 원자적 저장을 시도하고 실제 중복 여부를 반환합니다.
      */
-    private boolean isDuplicateEntry(ActiveDedupRule rule, DedupSpec.Rule specRule, Map<String, String> logData) {
-        String dedupKey = generateDedupKey(specRule.conditions(), logData);
-        long ttlSeconds = specRule.expirationTime().toTotalSeconds();
+    private boolean isDuplicateEntry(ActiveDedupRule rule, DedupSpec spec, Map<String, String> logData) {
+        String dedupKey = generateDedupKey(spec.conditions(), logData);
+        long ttlSeconds = spec.expirationTime().toTotalSeconds();
 
         boolean isSaved = dedupHistoryRepository.saveIfAbsent(rule.dedupRuleId(), dedupKey, ttlSeconds);
 

@@ -1,8 +1,8 @@
 package com.traveler.useractivity.domain.rule.filter.converter;
 
+import com.traveler.useractivity.domain.rule.filter.definition.FilterToken;
 import com.traveler.useractivity.domain.rule.filter.enums.ComparisonOperator;
 import com.traveler.useractivity.domain.rule.filter.enums.ValueType;
-import com.traveler.useractivity.domain.rule.filter.vo.FilterNode;
 import com.traveler.useractivity.global.exception.UserActivityServiceException;
 import com.traveler.useractivity.global.exception.code.UserActivityServiceErrorCode;
 import java.util.List;
@@ -20,27 +20,25 @@ public final class SpelExpressionConverter {
         throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
     }
 
-    public static String convert(List<FilterNode.Element> conditions) {
+    public static String convert(List<FilterToken> conditions) {
         if (conditions == null || conditions.isEmpty()) return "";
 
         StringBuilder spel = new StringBuilder();
 
-        for (FilterNode.Element element : conditions) {
-            switch (element) {
-                case FilterNode.Condition cond -> appendCondition(spel, cond);
-                case FilterNode.Operator op -> spel.append(" ")
+        for (FilterToken token : conditions) {
+            switch (token) {
+                case FilterToken.Condition cond -> appendCondition(spel, cond);
+                case FilterToken.Operator op -> spel.append(" ")
                         .append(op.value().getValue())
                         .append(" ");
-                case FilterNode.LeftParen lp -> spel.append("(");
-                case FilterNode.RightParen rp -> spel.append(")");
-                default -> throw new UserActivityServiceException(
-                        UserActivityServiceErrorCode.FILTER_UNSUPPORTED_NODE_TYPE);
+                case FilterToken.LeftParen lp -> spel.append("(");
+                case FilterToken.RightParen rp -> spel.append(")");
             }
         }
         return spel.toString();
     }
 
-    private static void appendCondition(StringBuilder spel, FilterNode.Condition cond) {
+    private static void appendCondition(StringBuilder spel, FilterToken.Condition cond) {
         if (!STRICT_FIELD_PATTERN.matcher(cond.field()).matches()) {
             throw new UserActivityServiceException(UserActivityServiceErrorCode.FILTER_UNSUPPORTED_NODE_TYPE);
         }

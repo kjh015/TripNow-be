@@ -1,6 +1,6 @@
 package com.traveler.web.domain.useractivity.dto.request;
 
-import com.traveler.web.domain.useractivity.dto.FilterNode;
+import com.traveler.web.domain.useractivity.dto.FilterToken;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -17,15 +17,15 @@ public final class FilterRuleRequest {
     public record CreateDTO(
             @NotBlank(message = "필터 규칙 이름은 필수입니다.") @Schema(description = "필터 규칙 이름", example = "에러 로그만 필터링")
                     String name,
-            @NotEmpty(message = "최소 하나 이상의 조건 노드가 필요합니다.") @Valid @Schema(description = "필터 조건 노드 목록")
-                    List<FilterNode.Element> conditions,
+            @NotEmpty(message = "최소 하나 이상의 조건 노드가 필요합니다.") @Valid @Schema(description = "필터 조건 토큰 목록")
+                    List<FilterToken> conditions,
             @NotNull(message = "활성화 여부는 필수입니다.") @Schema(description = "활성화 여부", example = "true") Boolean isActive) {}
 
     @Schema(name = "FilterRuleUpdateRequest")
     public record UpdateDTO(
             @NotBlank(message = "필터 규칙 이름은 필수입니다.") @Schema(description = "필터 규칙 이름", example = "에러 로그만 필터링")
                     String name,
-            @NotEmpty(message = "최소 하나 이상의 조건 노드가 필요합니다.") @Valid @Schema(description = "필터 조건 노드 목록")
-                    List<FilterNode.Element> conditions,
+            @NotEmpty(message = "최소 하나 이상의 조건 노드가 필요합니다.") @Valid @Schema(description = "필터 조건 토큰 목록")
+                    List<FilterToken> conditions,
             @NotNull(message = "활성화 여부는 필수입니다.") @Schema(description = "활성화 여부", example = "true") Boolean isActive) {}
 }

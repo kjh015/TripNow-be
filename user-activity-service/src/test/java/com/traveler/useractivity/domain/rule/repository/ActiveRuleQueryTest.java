@@ -2,9 +2,15 @@ package com.traveler.useractivity.domain.rule.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.traveler.useractivity.domain.rule.dedup.definition.DedupSpec;
 import com.traveler.useractivity.domain.rule.dedup.entity.DedupRule;
+import com.traveler.useractivity.domain.rule.dedup.enums.MatchType;
 import com.traveler.useractivity.domain.rule.dedup.repository.DedupRuleRepository;
+import com.traveler.useractivity.domain.rule.filter.definition.FilterToken;
 import com.traveler.useractivity.domain.rule.filter.entity.FilterRule;
+import com.traveler.useractivity.domain.rule.filter.enums.ComparisonOperator;
+import com.traveler.useractivity.domain.rule.filter.enums.LogicalOperator;
+import com.traveler.useractivity.domain.rule.filter.enums.ValueType;
 import com.traveler.useractivity.domain.rule.filter.repository.FilterRuleRepository;
 import com.traveler.useractivity.domain.rule.format.entity.FormatRule;
 import com.traveler.useractivity.domain.rule.format.repository.FormatRuleRepository;
@@ -72,6 +78,48 @@ class ActiveRuleQueryTest {
         em.clear();
 
         assertActiveRuleCounts(logProcessId, 0);
+    }
+
+    @Test
+    @DisplayName("필터·중복 제거 규칙의 내용은 JSON 컬럼에 저장되고 같은 값으로 읽힌다")
+    void ruleDefinitionsSurviveJsonColumn() {
+        LogProcess logProcess = LogProcess.builder().name("json-column").build();
+        em.persist(logProcess);
+        List<FilterToken> tokens = List.of(
+                new FilterToken.LeftParen("left-paren", 1L),
+                new FilterToken.Condition(
+                        "condition", 1L, "user_id", ComparisonOperator.values()[0], "1", ValueType.values()[0]),
+                new FilterToken.Operator("operator", 1L, LogicalOperator.values()[0]),
+                new FilterToken.RightParen("right-paren", 1L));
+        List<DedupSpec> specs = List.of(new DedupSpec(
+                List.of(new DedupSpec.Condition("user_id", "1", MatchType.EXACT_MATCH)),
+                new DedupSpec.ExpirationTime(0, 1, 0, 0)));
+        em.persist(FilterRule.builder()
+                .logProcess(logProcess)
+                .name("filter")
+                .expression("true")
+                .conditions(tokens)
+                .isActive(true)
+                .build());
+        em.persist(DedupRule.builder()
+                .logProcess(logProcess)
+                .name("dedup")
+                .rules(specs)
+                .isActive(true)
+                .build());
+        em.flush();
+        em.clear();
+
+        assertThat(filterRuleRepository
+                        .findAllByLogProcessIdAndLogProcessIsDeletedFalseAndIsActiveTrueOrderByIdAsc(logProcess.getId())
+                        .getFirst()
+                        .getConditions())
+                .isEqualTo(tokens);
+        assertThat(dedupRuleRepository
+                        .findAllByLogProcessIdAndLogProcessIsDeletedFalseAndIsActiveTrueOrderByIdAsc(logProcess.getId())
+                        .getFirst()
+                        .getRules())
+                .isEqualTo(specs);
     }
 
     private Long persistProcessWithActiveRules(String name) {
