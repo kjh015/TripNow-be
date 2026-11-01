@@ -1,6 +1,6 @@
 package com.traveler.search.domain.post.controller;
 
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -27,7 +27,7 @@ class PostSearchControllerTest {
     @Test
     @DisplayName("잘못된 cursor는 400 POST400_2로 응답한다")
     void invalidCursor() throws Exception {
-        given(queryService.getFeed(any()))
+        given(queryService.getFeed(argThat(dto -> "broken".equals(dto.cursor()))))
                 .willThrow(new SearchServiceException(SearchServiceErrorCode.POST_INVALID_CURSOR));
 
         mockMvc.perform(get("/v1/search/posts/feed").param("cursor", "broken"))

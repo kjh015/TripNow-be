@@ -34,6 +34,8 @@ public class MemberSearchRepositoryImpl implements MemberSearchRepository {
     // 관리자가 입력하는 가입일은 한국 날짜로 보고, 그날 0시부터 다음 날 0시 전까지로 바꾼다
     private static final ZoneId JOINED_DATE_ZONE = ZoneId.of("Asia/Seoul");
 
+    private static final LocalDate MIN_QUERYABLE_DATE = LocalDate.of(1000, 1, 2);
+    private static final LocalDate MAX_QUERYABLE_DATE = LocalDate.of(9999, 12, 30);
     private static final Map<String, ComparableExpressionBase<?>> SORTABLE_FIELDS = Map.of(
             "createdAt", member.createdAt,
             "loginId", member.loginId,
@@ -97,11 +99,21 @@ public class MemberSearchRepositoryImpl implements MemberSearchRepository {
     }
 
     private BooleanExpression joinedFrom(LocalDate from) {
-        return from == null ? null : member.createdAt.goe(startOfDay(from));
+        return from == null ? null : member.createdAt.goe(startOfDay(toQueryableDate(from)));
     }
 
     private BooleanExpression joinedTo(LocalDate to) {
-        return to == null ? null : member.createdAt.lt(startOfDay(to.plusDays(1)));
+        return to == null
+                ? null
+                : member.createdAt.lt(startOfDay(toQueryableDate(to).plusDays(1)));
+    }
+
+    // MySQL DATETIME 범위 밖의 값은 쿼리에서 오류가 난다. 가입일은 이 범위 안에 있어 끝값으로 맞춰도 결과가 같다
+    private LocalDate toQueryableDate(LocalDate date) {
+        if (date.isBefore(MIN_QUERYABLE_DATE)) {
+            return MIN_QUERYABLE_DATE;
+        }
+        return date.isAfter(MAX_QUERYABLE_DATE) ? MAX_QUERYABLE_DATE : date;
     }
 
     private Instant startOfDay(LocalDate date) {
