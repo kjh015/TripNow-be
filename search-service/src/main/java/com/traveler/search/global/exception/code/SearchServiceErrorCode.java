@@ -9,6 +9,7 @@ import lombok.Getter;
 public enum SearchServiceErrorCode implements BaseErrorCode {
     // Domain - Post
     POST_BAD_REQUEST(400, "POST400_1", "잘못된 입력 값입니다."),
+    POST_INVALID_CURSOR(400, "POST400_2", "유효하지 않은 cursor입니다."),
     POST_NOT_FOUND(404, "POST404_1", "요청한 게시물을 찾을 수 없습니다."),
 
     // Domain - Comment

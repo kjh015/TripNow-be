@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
+import com.traveler.common.core.response.CursorResponse;
 import com.traveler.common.core.response.PageResponse;
 import com.traveler.web.domain.member.adapter.MemberClientAdapter;
 import com.traveler.web.domain.search.adapter.PostSearchClientAdapter;
@@ -65,6 +66,23 @@ class PostSearchFacadeTest {
         given(memberClientAdapter.getNicknameMap(Set.of())).willReturn(Map.of());
 
         assertThat(facade.search(searchRequest()).content()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("피드도 작성자 닉네임을 붙이고 cursor 값을 그대로 돌려준다")
+    void feedCombinesNicknames() {
+        given(postSearchClientAdapter.getFeed(any()))
+                .willReturn(new CursorResponse<>(List.of(post(1L, 10L), post(2L, 20L)), "next", true));
+        given(memberClientAdapter.getNicknameMap(Set.of(10L, 20L))).willReturn(Map.of(10L, "여행자", 20L, "산책가"));
+
+        CursorResponse<PostSearchResponse.ListDTO> result =
+                facade.getFeed(PostSearchRequest.FeedDTO.builder().build());
+
+        assertThat(result.content())
+                .extracting(PostSearchResponse.ListDTO::postId, PostSearchResponse.ListDTO::memberNickname)
+                .containsExactly(tuple(1L, "여행자"), tuple(2L, "산책가"));
+        assertThat(result.nextCursor()).isEqualTo("next");
+        assertThat(result.hasNext()).isTrue();
     }
 
     private static PostSearchRequest.SearchDTO searchRequest() {

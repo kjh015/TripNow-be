@@ -5,6 +5,7 @@ import com.traveler.common.api.auth.annotation.RequireAuth;
 import com.traveler.common.core.auth.UserContext;
 import com.traveler.common.core.code.SuccessCode;
 import com.traveler.common.core.response.ApiResponse;
+import com.traveler.common.core.response.CursorResponse;
 import com.traveler.common.core.response.PageResponse;
 import com.traveler.search.domain.post.dto.request.PostSearchRequest;
 import com.traveler.search.domain.post.dto.response.PostSearchResponse;
@@ -36,6 +37,17 @@ public class PostSearchController {
     public ApiResponse<PageResponse<PostSearchResponse.SearchDTO>> search(
             @ParameterObject @Valid @ModelAttribute PostSearchRequest.SearchDTO dto) {
         return ApiResponse.onSuccess(SuccessCode.OK, postSearchQueryService.search(dto));
+    }
+
+    @Operation(
+            summary = "게시글 피드 조회",
+            description =
+                    "검색 조건에 맞는 게시글을 cursor 기반으로 조회합니다. 첫 요청에는 cursor를 생략하고, 다음 페이지부터는 응답의 nextCursor를 전달합니다. hasNext가 false이면 더 이상 조회할 게시글이 없습니다.")
+    @ApiErrorCodeExamples(search = {SearchServiceErrorCode.POST_INVALID_CURSOR})
+    @GetMapping("/feed")
+    public ApiResponse<CursorResponse<PostSearchResponse.SearchDTO>> getFeed(
+            @ParameterObject @Valid @ModelAttribute PostSearchRequest.FeedDTO dto) {
+        return ApiResponse.onSuccess(SuccessCode.OK, postSearchQueryService.getFeed(dto));
     }
 
     @Operation(summary = "게시글 상세 조회", description = "게시글의 상세 정보를 조회합니다.")

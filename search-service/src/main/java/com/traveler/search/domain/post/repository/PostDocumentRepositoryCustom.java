@@ -6,6 +6,7 @@ import com.traveler.search.domain.post.dto.request.PostSearchRequest;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.elasticsearch.core.SearchHit;
 
 public interface PostDocumentRepositoryCustom {
 
@@ -18,6 +19,8 @@ public interface PostDocumentRepositoryCustom {
     List<RankingResult> aggregateTopPopular(String field, int topN);
 
     Page<PostDocument> search(PostSearchRequest.SearchDTO request, Pageable pageable);
+
+    List<SearchHit<PostDocument>> searchFeed(PostSearchRequest.FeedDTO dto, List<Object> searchAfter, int limit);
 
     List<String> findAutocompleteTitles(String keyword);
 

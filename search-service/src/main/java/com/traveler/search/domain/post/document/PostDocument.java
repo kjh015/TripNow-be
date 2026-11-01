@@ -17,6 +17,8 @@ import org.springframework.data.elasticsearch.annotations.*;
 public class PostDocument extends BaseDocument {
 
     public static final class Fields {
+        public static final String ID = "id";
+        public static final String CREATED_AT = "createdAt";
         public static final String MEMBER_ID = "memberId";
         public static final String TITLE = "title";
         public static final String TITLE_AUTOCOMPLETE = "title.autocomplete";
