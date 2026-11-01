@@ -1,7 +1,9 @@
 package com.traveler.web.domain.member.client.dto.response;
 
+import com.traveler.web.domain.member.enums.ContentDeletionStatus;
 import com.traveler.web.domain.member.enums.Gender;
 import com.traveler.web.domain.member.enums.RoleType;
+import com.traveler.web.domain.member.enums.WithdrawalReason;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -36,5 +38,10 @@ public final class AdminMemberClientResponse {
             Instant createdAt,
             Instant updatedAt,
             boolean isDeleted,
-            Instant deletedAt) {}
+            Instant deletedAt,
+            ContentDeletionStatus contentDeletionStatus,
+            Instant contentDeletedAt) {}
+
+    public record PendingWithdrawalDTO(
+            Long memberId, Instant withdrawnAt, WithdrawalReason reason, ContentDeletionStatus contentDeletionStatus) {}
 }

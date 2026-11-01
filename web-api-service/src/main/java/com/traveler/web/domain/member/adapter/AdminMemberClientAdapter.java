@@ -3,6 +3,7 @@ package com.traveler.web.domain.member.adapter;
 import com.traveler.common.core.response.PageResponse;
 import com.traveler.web.domain.member.cache.MemberNicknameCache;
 import com.traveler.web.domain.member.client.AdminMemberClient;
+import com.traveler.web.domain.member.client.dto.request.AdminMemberClientRequest;
 import com.traveler.web.domain.member.client.dto.response.AdminMemberClientResponse;
 import com.traveler.web.global.resilience.DownstreamCallExecutor;
 import com.traveler.web.global.resilience.DownstreamServiceNames;
@@ -31,10 +32,24 @@ public class AdminMemberClientAdapter {
         return response;
     }
 
-    public PageResponse<AdminMemberClientResponse.ListDTO> getMembers(Pageable pageable) {
+    public PageResponse<AdminMemberClientResponse.ListDTO> getMembers(
+            AdminMemberClientRequest.SearchDTO condition, Pageable pageable) {
+        return downstreamCallExecutor.execute(DownstreamServiceNames.MEMBER, () -> adminMemberClient
+                .getMembers(
+                        condition.keyword(),
+                        condition.provider(),
+                        condition.role(),
+                        condition.deleted(),
+                        condition.joinedFrom(),
+                        condition.joinedTo(),
+                        pageable)
+                .result());
+    }
+
+    public PageResponse<AdminMemberClientResponse.PendingWithdrawalDTO> getPendingWithdrawals(Pageable pageable) {
         return downstreamCallExecutor.execute(
                 DownstreamServiceNames.MEMBER,
-                () -> adminMemberClient.getMembers(pageable).result());
+                () -> adminMemberClient.getPendingWithdrawals(pageable).result());
     }
 
     public AdminMemberClientResponse.DetailDTO getMember(Long memberId) {

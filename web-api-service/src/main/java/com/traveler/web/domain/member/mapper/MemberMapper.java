@@ -1,8 +1,10 @@
 package com.traveler.web.domain.member.mapper;
 
+import com.traveler.web.domain.member.client.dto.request.AdminMemberClientRequest;
 import com.traveler.web.domain.member.client.dto.request.MemberClientRequest;
 import com.traveler.web.domain.member.client.dto.response.AdminMemberClientResponse;
 import com.traveler.web.domain.member.client.dto.response.MemberClientResponse;
+import com.traveler.web.domain.member.dto.request.AdminMemberRequest;
 import com.traveler.web.domain.member.dto.request.MemberRequest;
 import com.traveler.web.domain.member.dto.response.AdminMemberResponse;
 import com.traveler.web.domain.member.dto.response.MemberResponse;
@@ -17,6 +19,8 @@ public interface MemberMapper {
     MemberClientRequest.UpdateDTO toClientUpdateDTO(MemberRequest.UpdateDTO request);
 
     MemberClientRequest.UpdatePasswordDTO toClientUpdatePasswordDTO(MemberRequest.UpdatePasswordDTO request);
+
+    AdminMemberClientRequest.SearchDTO toClientSearchDTO(AdminMemberRequest.SearchDTO request);
 
     // --- Response Mapping (Client -> Web) ---
     MemberResponse.SignUpDTO toResponseSignUpDTO(MemberClientResponse.SignUpDTO clientResponse);
@@ -39,4 +43,7 @@ public interface MemberMapper {
     AdminMemberResponse.ListDTO toResponseListDTO(AdminMemberClientResponse.ListDTO listDTO);
 
     AdminMemberResponse.DetailDTO toResponseDetailDTO(AdminMemberClientResponse.DetailDTO clientResponse);
+
+    AdminMemberResponse.PendingWithdrawalDTO toResponsePendingWithdrawalDTO(
+            AdminMemberClientResponse.PendingWithdrawalDTO clientResponse);
 }

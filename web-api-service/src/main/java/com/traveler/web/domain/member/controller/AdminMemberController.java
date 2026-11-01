@@ -5,6 +5,7 @@ import com.traveler.common.core.code.ErrorCode;
 import com.traveler.common.core.code.SuccessCode;
 import com.traveler.common.core.response.ApiResponse;
 import com.traveler.common.core.response.PageResponse;
+import com.traveler.web.domain.member.dto.request.AdminMemberRequest;
 import com.traveler.web.domain.member.dto.response.AdminMemberResponse;
 import com.traveler.web.domain.member.facade.AdminMemberFacade;
 import com.traveler.web.global.swagger.ApiErrorCodeExamples;
@@ -46,12 +47,23 @@ public class AdminMemberController {
         return ApiResponse.onSuccess(SuccessCode.OK, adminMemberFacade.deleteMember(memberId));
     }
 
-    @Operation(summary = "전체 회원 목록 조회", description = "어드민 패널에 표시할 전체 회원 목록을 페이징하여 조회합니다.")
+    @Operation(
+            summary = "전체 회원 목록 조회",
+            description = "어드민 패널에 표시할 회원 목록을 검색 조건으로 걸러 페이징하여 조회합니다. 정렬은 createdAt, loginId, nickname, email만 허용합니다.")
     @GetMapping
     public ApiResponse<PageResponse<AdminMemberResponse.ListDTO>> getMembers(
+            @ParameterObject @ModelAttribute AdminMemberRequest.SearchDTO condition,
             @ParameterObject @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC)
                     Pageable pageable) {
-        return ApiResponse.onSuccess(SuccessCode.OK, adminMemberFacade.getMembers(pageable));
+        return ApiResponse.onSuccess(SuccessCode.OK, adminMemberFacade.getMembers(condition, pageable));
+    }
+
+    @Operation(summary = "회원 탈퇴 후 콘텐츠 정리 미완료 회원 조회", description = "탈퇴 후 30분이 지났지만 게시글·댓글·좋아요 정리가 완료되지 않은 회원을 조회합니다.")
+    @GetMapping("/withdrawals/pending")
+    public ApiResponse<PageResponse<AdminMemberResponse.PendingWithdrawalDTO>> getPendingWithdrawals(
+            @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.ASC)
+                    Pageable pageable) {
+        return ApiResponse.onSuccess(SuccessCode.OK, adminMemberFacade.getPendingWithdrawals(pageable));
     }
 
     @Operation(summary = "회원 상세 정보 조회", description = "어드민 패널에서 특정 회원의 상세 정보(탈퇴 여부 포함)를 조회합니다.")

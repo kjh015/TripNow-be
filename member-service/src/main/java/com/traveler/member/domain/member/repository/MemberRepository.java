@@ -6,7 +6,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
-public interface MemberRepository extends JpaRepository<Member, Long> {
+public interface MemberRepository extends JpaRepository<Member, Long>, MemberSearchRepository {
     // Admin
     @Query("SELECT m FROM Member m LEFT JOIN FETCH m.roles WHERE m.id = :id")
     Optional<Member> findByIdWithRoles(Long id);

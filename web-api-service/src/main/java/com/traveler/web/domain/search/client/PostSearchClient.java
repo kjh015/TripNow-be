@@ -1,6 +1,7 @@
 package com.traveler.web.domain.search.client;
 
 import com.traveler.common.core.response.ApiResponse;
+import com.traveler.common.core.response.CursorResponse;
 import com.traveler.common.core.response.PageResponse;
 import com.traveler.web.domain.search.client.dto.response.PostSearchClientResponse;
 import com.traveler.web.domain.search.enums.PostSortType;
@@ -27,6 +28,16 @@ public interface PostSearchClient {
             @RequestParam(required = false) PostSortType sort,
             @RequestParam(required = false) Sort.Direction direction,
             @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size);
+
+    @GetMapping("/feed")
+    ApiResponse<CursorResponse<PostSearchClientResponse.SearchDTO>> getFeed(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String region,
+            @RequestParam(required = false) PostSortType sort,
+            @RequestParam(required = false) Sort.Direction direction,
+            @RequestParam(required = false) String cursor,
             @RequestParam(required = false) Integer size);
 
     @GetMapping("/{postId}")

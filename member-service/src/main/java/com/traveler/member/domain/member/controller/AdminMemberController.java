@@ -5,6 +5,7 @@ import com.traveler.common.core.code.ErrorCode;
 import com.traveler.common.core.code.SuccessCode;
 import com.traveler.common.core.response.ApiResponse;
 import com.traveler.common.core.response.PageResponse;
+import com.traveler.member.domain.member.dto.request.AdminMemberRequest;
 import com.traveler.member.domain.member.dto.response.AdminMemberResponse;
 import com.traveler.member.domain.member.service.command.AdminMemberCommandService;
 import com.traveler.member.domain.member.service.query.AdminMemberQueryService;
@@ -49,12 +50,18 @@ public class AdminMemberController {
         return ApiResponse.onSuccess(SuccessCode.OK, adminMemberCommandService.deleteMember(memberId));
     }
 
-    @Operation(summary = "전체 회원 목록 조회", description = "전체 회원의 목록을 페이징하여 조회합니다.")
+    @Operation(
+            summary = "전체 회원 목록 조회",
+            description = "검색 조건에 맞는 회원의 목록을 페이징하여 조회합니다. 정렬은 createdAt, loginId, nickname, email만 허용합니다.")
+    @ApiErrorCodeExamples(
+            value = {MemberServiceErrorCode.MEMBER_INVALID_SORT},
+            common = {ErrorCode.INVALID_TYPE_VALUE})
     @GetMapping
     public ApiResponse<PageResponse<AdminMemberResponse.ListDTO>> getMembers(
+            @ParameterObject @ModelAttribute AdminMemberRequest.SearchDTO condition,
             @ParameterObject @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC)
                     Pageable pageable) {
-        return ApiResponse.onSuccess(SuccessCode.OK, adminMemberQueryService.getMembers(pageable));
+        return ApiResponse.onSuccess(SuccessCode.OK, adminMemberQueryService.getMembers(condition, pageable));
     }
 
     @Operation(summary = "회원 탈퇴 후 콘텐츠 정리 미완료 회원 조회", description = "탈퇴 후 30분이 지났지만 게시글·댓글·좋아요 정리가 완료되지 않은 회원을 조회합니다.")

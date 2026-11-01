@@ -1,6 +1,7 @@
 package com.traveler.search.domain.post.repository;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
@@ -51,20 +52,28 @@ public class PostDocumentRepositoryImpl implements PostDocumentRepositoryCustom 
         NativeQueryBuilder queryBuilder = new NativeQueryBuilder().withPageable(pageable);
 
         // 1. Must & Filter Query 구성
-        queryBuilder.withQuery(q -> q.bool(b -> {
-            buildMustClause(b, dto.keyword());
-            buildFilterClause(b, dto.category(), dto.region());
-            if (dto.sort() == PostSortType.ACCURACY) {
-                b.should(s -> s.rankFeature(rf -> rf.field(PostDocument.Fields.POPULARITY_SCORE)
-                        .boost(2.0f)
-                        .saturation(sa -> sa)));
-            }
-            return b;
-        }));
+        applySearchQuery(queryBuilder, dto.keyword(), dto.category(), dto.region(), dto.sort());
 
         SearchHits<PostDocument> searchHits =
                 operations.search(queryBuilder.build(), PostDocument.class, IndexCoordinates.of(postIndexName));
         return SearchHitSupport.searchPageFor(searchHits, pageable).map(SearchHit::getContent);
+    }
+
+    @Override
+    public List<SearchHit<PostDocument>> searchFeed(
+            PostSearchRequest.FeedDTO dto, List<Object> searchAfter, int limit) {
+        NativeQueryBuilder queryBuilder =
+                new NativeQueryBuilder().withMaxResults(limit).withTrackTotalHits(false);
+
+        applySearchQuery(queryBuilder, dto.keyword(), dto.category(), dto.region(), dto.sort());
+        applyFeedSort(queryBuilder, dto.sort(), dto.direction().isAscending() ? SortOrder.Asc : SortOrder.Desc);
+        if (searchAfter != null) {
+            queryBuilder.withSearchAfter(searchAfter);
+        }
+
+        return operations
+                .search(queryBuilder.build(), PostDocument.class, IndexCoordinates.of(postIndexName))
+                .getSearchHits();
     }
 
     @Override
@@ -178,6 +187,36 @@ public class PostDocumentRepositoryImpl implements PostDocumentRepositoryCustom 
                         bucket.key().stringValue(),
                         bucket.aggregations().get(TOTAL_SCORE_AGG).sum().value()))
                 .toList();
+    }
+
+    private void applySearchQuery(
+            NativeQueryBuilder queryBuilder, String keyword, String category, String region, PostSortType sort) {
+        queryBuilder.withQuery(q -> q.bool(b -> {
+            buildMustClause(b, keyword);
+            buildFilterClause(b, category, region);
+            if (sort == PostSortType.ACCURACY) {
+                b.should(s -> s.rankFeature(rf -> rf.field(PostDocument.Fields.POPULARITY_SCORE)
+                        .boost(2.0f)
+                        .saturation(sa -> sa)));
+            }
+            return b;
+        }));
+    }
+
+    // search_after는 정렬 값으로 위치를 찾으므로, 값이 같은 글이 있으면 글이 빠질 수 있다. 따라서 게시글 ID를 정렬 마지막에 둔다.
+    private void applyFeedSort(NativeQueryBuilder queryBuilder, PostSortType sort, SortOrder order) {
+        if (sort == PostSortType.ACCURACY) {
+            queryBuilder.withSort(s -> s.score(sc -> sc.order(SortOrder.Desc)));
+        } else {
+            if (sort != PostSortType.LATEST) {
+                // 필드가 없는 문서의 정렬 값은 0으로 고정
+                queryBuilder.withSort(
+                        s -> s.field(f -> f.field(sort.getField()).order(order).missing(FieldValue.of(0))));
+            }
+            queryBuilder.withSort(
+                    s -> s.field(f -> f.field(PostDocument.Fields.CREATED_AT).order(order)));
+        }
+        queryBuilder.withSort(s -> s.field(f -> f.field(PostDocument.Fields.ID).order(order)));
     }
 
     private void buildMustClause(BoolQuery.Builder b, String keyword) {

@@ -1,5 +1,6 @@
 package com.traveler.web.domain.search.adapter;
 
+import com.traveler.common.core.response.CursorResponse;
 import com.traveler.common.core.response.PageResponse;
 import com.traveler.web.domain.search.client.PostSearchClient;
 import com.traveler.web.domain.search.client.dto.response.PostSearchClientResponse;
@@ -25,6 +26,19 @@ public class PostSearchClientAdapter {
                         dto.sort(),
                         dto.direction(),
                         dto.page(),
+                        dto.size())
+                .result());
+    }
+
+    public CursorResponse<PostSearchClientResponse.SearchDTO> getFeed(PostSearchRequest.FeedDTO dto) {
+        return downstreamCallExecutor.execute(DownstreamServiceNames.SEARCH, () -> postSearchClient
+                .getFeed(
+                        dto.keyword(),
+                        dto.category(),
+                        dto.region(),
+                        dto.sort(),
+                        dto.direction(),
+                        dto.cursor(),
                         dto.size())
                 .result());
     }
