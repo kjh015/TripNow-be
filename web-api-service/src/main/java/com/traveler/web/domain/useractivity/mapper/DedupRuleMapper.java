@@ -15,7 +15,7 @@ public interface DedupRuleMapper {
 
     DedupRuleClientRequest.UpdateDTO toClientUpdateDTO(DedupRuleRequest.UpdateDTO dto);
 
-    DedupClientSpec.Rule toClientRule(DedupSpec.Rule rule);
+    DedupClientSpec toClientSpec(DedupSpec spec);
 
     DedupClientSpec.Condition toClientCondition(DedupSpec.Condition condition);
 
@@ -31,7 +31,7 @@ public interface DedupRuleMapper {
 
     DedupRuleResponse.DetailDTO toResponseDetailDTO(DedupRuleClientResponse.DetailDTO clientResponse);
 
-    DedupSpec.Rule toResponseRule(DedupClientSpec.Rule rule);
+    DedupSpec toResponseSpec(DedupClientSpec spec);
 
     DedupSpec.Condition toResponseCondition(DedupClientSpec.Condition condition);
 

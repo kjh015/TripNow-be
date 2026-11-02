@@ -11,12 +11,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import java.time.Duration;
 import java.util.List;
 
-public final class DedupSpec {
-    private DedupSpec() {
-        throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
-    }
-
-    public record Rule(@NotEmpty @Valid List<Condition> conditions, @NotNull ExpirationTime expirationTime) {}
+public record DedupSpec(@NotEmpty @Valid List<Condition> conditions, @NotNull ExpirationTime expirationTime) {
 
     public record Condition(@NotBlank String field, String value, @NotNull MatchType matchType) {}
 

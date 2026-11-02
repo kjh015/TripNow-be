@@ -1,4 +1,4 @@
-package com.traveler.useractivity.domain.rule.dedup.vo;
+package com.traveler.useractivity.domain.rule.dedup.definition;
 
 import com.traveler.useractivity.domain.rule.dedup.enums.MatchType;
 import com.traveler.useractivity.global.exception.UserActivityServiceException;
@@ -11,16 +11,10 @@ import jakarta.validation.constraints.PositiveOrZero;
 import java.time.Duration;
 import java.util.List;
 
-public final class DedupSpec {
-
-    private DedupSpec() {
-        throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
-    }
-
-    /**
-     * 하나의 중복 제거 단위
-     */
-    public record Rule(@NotEmpty @Valid List<Condition> conditions, @NotNull @Valid ExpirationTime expirationTime) {}
+/**
+ * 하나의 중복 제거 단위
+ */
+public record DedupSpec(@NotEmpty @Valid List<Condition> conditions, @NotNull @Valid ExpirationTime expirationTime) {
 
     /**
      * 개별 조건식

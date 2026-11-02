@@ -3,12 +3,7 @@ package com.traveler.web.domain.useractivity.client.dto;
 import com.traveler.web.domain.useractivity.enums.MatchType;
 import java.util.List;
 
-public final class DedupClientSpec {
-    private DedupClientSpec() {
-        throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
-    }
-
-    public record Rule(List<Condition> conditions, ExpirationTime expirationTime) {}
+public record DedupClientSpec(List<Condition> conditions, ExpirationTime expirationTime) {
 
     public record Condition(String field, String value, MatchType matchType) {}
 

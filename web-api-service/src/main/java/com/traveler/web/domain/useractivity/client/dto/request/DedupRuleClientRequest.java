@@ -8,7 +8,7 @@ public final class DedupRuleClientRequest {
         throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
     }
 
-    public record CreateDTO(String name, List<DedupClientSpec.Rule> rules, Boolean isActive) {}
+    public record CreateDTO(String name, List<DedupClientSpec> rules, Boolean isActive) {}
 
-    public record UpdateDTO(String name, List<DedupClientSpec.Rule> rules, Boolean isActive) {}
+    public record UpdateDTO(String name, List<DedupClientSpec> rules, Boolean isActive) {}
 }

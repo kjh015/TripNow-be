@@ -3,6 +3,15 @@ spring:
     activate:
       on-profile: local
 
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            # 로컬에서만 완화한다. 나머지 CORS 값은 기본 application.yml을 따른다
+            allowedOrigins: ${ALLOWED_ORIGINS:http://localhost:3000}
+            allowedHeaders: ["*"]
+
 springdoc:
   api-docs:
     enabled: true

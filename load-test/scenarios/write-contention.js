@@ -1,11 +1,11 @@
-// 인기글 1개에 쓰기를 몰아 비관적 락(PostRepository.findByIdWithLock, lock timeout 3s) 대기를 본다.
+// 인기글 1개에 쓰기를 몰아 통계 슬롯 락(PostStatsRepository.findSlotWithLock, lock timeout 3s) 대기를 본다.
 //   80%: 좋아요 추가 → 바로 취소 (같은 사용자)
 //   20%: 댓글 작성
 // 부하 모델은 lib/load-profile.js (RATE 기본 20/s).
 //
 // 볼 것: like_add·like_remove·comment_create의 p95, 락 경합 응답(409 POST_LOCK_CONFLICT) 건수,
 //        Outbox 대기 건수(outbox_messages)와 search-service 컨슈머 lag이 0으로 돌아오는 시간
-// 끝난 뒤 정합성: DB post.like_count = likes 행 수 = ES likeCount. teardown이 ES 값과, 같이 실행할 DB 확인 SQL을 출력한다
+// 끝난 뒤 정합성: DB post_stats의 like_count 합계 = likes 행 수 = ES likeCount. teardown이 ES 값과, 같이 실행할 DB 확인 SQL을 출력한다
 import { sleep } from 'k6';
 import { Counter } from 'k6/metrics';
 
@@ -68,10 +68,10 @@ export function teardown(data) {
 
 function consistencySql(postId) {
     return (
-        'SELECT p.like_count, ' +
-        '(SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) AS like_rows, ' +
-        'p.comment_count, ' +
-        '(SELECT COUNT(*) FROM comment c WHERE c.post_id = p.id AND c.is_deleted = false) AS comment_rows ' +
-        `FROM post p WHERE p.id = ${postId};`
+        'SELECT SUM(s.like_count) AS like_count, ' +
+        `(SELECT COUNT(*) FROM likes l WHERE l.post_id = ${postId}) AS like_rows, ` +
+        'SUM(s.comment_count) AS comment_count, ' +
+        `(SELECT COUNT(*) FROM comment c WHERE c.post_id = ${postId} AND c.is_deleted = false) AS comment_rows ` +
+        `FROM post_stats s WHERE s.post_id = ${postId};`
     );
 }

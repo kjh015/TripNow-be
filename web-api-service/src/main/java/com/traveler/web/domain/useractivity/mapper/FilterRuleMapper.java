@@ -1,9 +1,9 @@
 package com.traveler.web.domain.useractivity.mapper;
 
-import com.traveler.web.domain.useractivity.client.dto.FilterClientNode;
+import com.traveler.web.domain.useractivity.client.dto.FilterClientToken;
 import com.traveler.web.domain.useractivity.client.dto.request.FilterRuleClientRequest;
 import com.traveler.web.domain.useractivity.client.dto.response.FilterRuleClientResponse;
-import com.traveler.web.domain.useractivity.dto.FilterNode;
+import com.traveler.web.domain.useractivity.dto.FilterToken;
 import com.traveler.web.domain.useractivity.dto.request.FilterRuleRequest;
 import com.traveler.web.domain.useractivity.dto.response.FilterRuleResponse;
 import org.mapstruct.Mapper;
@@ -16,16 +16,16 @@ public interface FilterRuleMapper {
 
     FilterRuleClientRequest.UpdateDTO toClientUpdateDTO(FilterRuleRequest.UpdateDTO dto);
 
-    @SubclassMapping(source = FilterNode.Condition.class, target = FilterClientNode.Condition.class)
-    @SubclassMapping(source = FilterNode.Operator.class, target = FilterClientNode.Operator.class)
-    @SubclassMapping(source = FilterNode.Paren.class, target = FilterClientNode.Paren.class)
-    FilterClientNode.Element toClientElement(FilterNode.Element element);
+    @SubclassMapping(source = FilterToken.Condition.class, target = FilterClientToken.Condition.class)
+    @SubclassMapping(source = FilterToken.Operator.class, target = FilterClientToken.Operator.class)
+    @SubclassMapping(source = FilterToken.Paren.class, target = FilterClientToken.Paren.class)
+    FilterClientToken toClientToken(FilterToken token);
 
-    FilterClientNode.Condition toClientCondition(FilterNode.Condition condition);
+    FilterClientToken.Condition toClientCondition(FilterToken.Condition condition);
 
-    FilterClientNode.Operator toClientOperator(FilterNode.Operator operator);
+    FilterClientToken.Operator toClientOperator(FilterToken.Operator operator);
 
-    FilterClientNode.Paren toClientParen(FilterNode.Paren paren);
+    FilterClientToken.Paren toClientParen(FilterToken.Paren paren);
 
     FilterRuleResponse.CreateDTO toResponseCreateDTO(FilterRuleClientResponse.CreateDTO clientResponse);
 
@@ -37,14 +37,14 @@ public interface FilterRuleMapper {
 
     FilterRuleResponse.DetailDTO toResponseDetailDTO(FilterRuleClientResponse.DetailDTO clientResponse);
 
-    @SubclassMapping(source = FilterClientNode.Condition.class, target = FilterNode.Condition.class)
-    @SubclassMapping(source = FilterClientNode.Operator.class, target = FilterNode.Operator.class)
-    @SubclassMapping(source = FilterClientNode.Paren.class, target = FilterNode.Paren.class)
-    FilterNode.Element toResponseElement(FilterClientNode.Element element);
+    @SubclassMapping(source = FilterClientToken.Condition.class, target = FilterToken.Condition.class)
+    @SubclassMapping(source = FilterClientToken.Operator.class, target = FilterToken.Operator.class)
+    @SubclassMapping(source = FilterClientToken.Paren.class, target = FilterToken.Paren.class)
+    FilterToken toResponseToken(FilterClientToken token);
 
-    FilterNode.Condition toResponseCondition(FilterClientNode.Condition condition);
+    FilterToken.Condition toResponseCondition(FilterClientToken.Condition condition);
 
-    FilterNode.Operator toResponseOperator(FilterClientNode.Operator operator);
+    FilterToken.Operator toResponseOperator(FilterClientToken.Operator operator);
 
-    FilterNode.Paren toResponseParen(FilterClientNode.Paren paren);
+    FilterToken.Paren toResponseParen(FilterClientToken.Paren paren);
 }

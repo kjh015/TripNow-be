@@ -1,6 +1,6 @@
 package com.traveler.useractivity.domain.history.document;
 
-import com.traveler.useractivity.domain.history.document.vo.HistoryFailInfo;
+import com.traveler.useractivity.domain.history.document.embedded.HistoryFailInfo;
 import java.time.Instant;
 import java.util.Map;
 import lombok.*;

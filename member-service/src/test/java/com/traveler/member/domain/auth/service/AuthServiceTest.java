@@ -168,7 +168,7 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.reissue(REFRESH_TOKEN))
                 .isInstanceOf(MemberServiceException.class)
                 .extracting("code")
-                .isEqualTo(MemberServiceErrorCode.INVALID_TOKEN_TYPE);
+                .isEqualTo(MemberServiceErrorCode.REFRESH_TOKEN_NOT_FOUND);
         verify(refreshTokenRepository).deleteByMemberId(EXISTING_MEMBER_ID);
         assertThat(output)
                 .contains("WARN")
@@ -178,14 +178,17 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("저장된 리프레시 토큰이 없으면 재사용 의심과 구분되는 WARN을 남긴다")
+    @DisplayName("저장된 리프레시 토큰이 없으면 401 REFRESH_TOKEN_NOT_FOUND이고, 재사용 의심과 구분되는 WARN을 남긴다")
     void reissue_noStoredRefreshToken_warnsDistinctMessage(CapturedOutput output) {
         givenValidRefreshToken(EXISTING_MEMBER_ID);
         given(memberRepository.findActiveByIdWithRoles(EXISTING_MEMBER_ID))
                 .willReturn(Optional.of(MemberFixture.kakaoMember(EXISTING_MEMBER_ID)));
         given(refreshTokenRepository.findByMemberId(EXISTING_MEMBER_ID)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> authService.reissue(REFRESH_TOKEN)).isInstanceOf(MemberServiceException.class);
+        assertThatThrownBy(() -> authService.reissue(REFRESH_TOKEN))
+                .isInstanceOf(MemberServiceException.class)
+                .extracting("code")
+                .isEqualTo(MemberServiceErrorCode.REFRESH_TOKEN_NOT_FOUND);
         assertThat(output).contains("저장된 리프레시 토큰 없음").doesNotContain("재사용 의심");
     }
 

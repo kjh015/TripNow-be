@@ -1,6 +1,6 @@
 package com.traveler.search.domain.post.document;
 
-import com.traveler.search.domain.post.document.vo.PostImage;
+import com.traveler.search.domain.post.document.embedded.PostImage;
 import com.traveler.search.global.document.BaseDocument;
 import java.util.List;
 import lombok.*;

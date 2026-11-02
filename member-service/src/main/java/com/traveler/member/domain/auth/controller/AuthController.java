@@ -50,6 +50,7 @@ public class AuthController {
     @ApiErrorCodeExamples(
             value = {
                 MemberServiceErrorCode.TOKEN_REISSUE_FAILED,
+                MemberServiceErrorCode.REFRESH_TOKEN_NOT_FOUND,
                 MemberServiceErrorCode.EXPIRED_JWT,
                 MemberServiceErrorCode.INVALID_TOKEN_TYPE
             },

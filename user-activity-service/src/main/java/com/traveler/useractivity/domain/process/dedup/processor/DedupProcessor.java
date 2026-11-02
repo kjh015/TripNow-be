@@ -13,7 +13,7 @@ import com.traveler.useractivity.domain.process.dedup.model.ActiveDedupRule;
 import com.traveler.useractivity.domain.process.dedup.model.DedupResult;
 import com.traveler.useractivity.domain.process.dedup.provider.DedupRuleProvider;
 import com.traveler.useractivity.domain.process.dedup.service.DedupService;
-import com.traveler.useractivity.domain.rule.dedup.vo.DedupSpec;
+import com.traveler.useractivity.domain.rule.dedup.definition.DedupSpec;
 import com.traveler.useractivity.global.kafka.KafkaTopicProperties;
 import java.util.List;
 import java.util.Map;
@@ -63,7 +63,7 @@ public class DedupProcessor {
     // 중복 탐지 조건 및 만료 시간을 포함한 실패 상세 객체 조립
     private FailInfo createFailInfo(DedupResult dedupResult, Map<String, String> logData) {
         ActiveDedupRule rule = dedupResult.rule();
-        DedupSpec.Rule spec = dedupResult.matchedSpec();
+        DedupSpec spec = dedupResult.matchedSpec();
 
         String conditionsDetail = spec.conditions().stream()
                 .map(c -> c.field() + "=" + logData.get(c.field()))

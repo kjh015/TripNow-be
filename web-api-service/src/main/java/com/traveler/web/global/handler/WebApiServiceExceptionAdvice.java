@@ -4,6 +4,8 @@ import com.traveler.common.api.handler.BaseExceptionAdvice;
 import com.traveler.common.core.code.ErrorCode;
 import com.traveler.common.core.response.ApiResponse;
 import com.traveler.web.global.exception.WebApiServiceException;
+import com.traveler.web.global.exception.code.WebApiServiceErrorCode;
+import feign.RetryableException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -30,6 +32,18 @@ public class WebApiServiceExceptionAdvice implements BaseExceptionAdvice {
             log.warn("[WebApi Service Business Exception] Code: {}, Message: {}", ex.getCode(), ex.getMessage());
         }
         return createErrorResponse(ex.getCode(), null);
+    }
+
+    /** 서킷이 열리기 전의 하위 서비스 타임아웃·연결 실패. 열린 뒤와 같은 503으로 응답해 같은 장애를 응답 코드로 묶어 본다 */
+    @ExceptionHandler(RetryableException.class)
+    protected ResponseEntity<ApiResponse<Void>> handleRetryableException(
+            RetryableException ex, HttpServletRequest request) {
+        log.error(
+                "[Downstream Unavailable] Method: {}, URI: {}, Message: {}",
+                request.getMethod(),
+                request.getRequestURI(),
+                ex.getMessage());
+        return createErrorResponse(WebApiServiceErrorCode.DOWNSTREAM_UNAVAILABLE, null);
     }
 
     /**

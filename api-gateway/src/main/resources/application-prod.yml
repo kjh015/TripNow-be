@@ -2,15 +2,3 @@ spring:
   config:
     activate:
       on-profile: prod
-
-  cloud:
-    gateway:
-      httpclient:
-        connect-timeout: 2000 # 빠른 연결 실패 유도
-      globalcors:
-        cors-configurations:
-          '[/**]':
-            allowedOrigins: ${ALLOWED_ORIGINS:https://tripnow.shop}
-            allowedHeaders: ["Content-Type", "Authorization"]
-            allowedMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-            allowCredentials: true

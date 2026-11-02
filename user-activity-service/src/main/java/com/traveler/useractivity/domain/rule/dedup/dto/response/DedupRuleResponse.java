@@ -1,6 +1,6 @@
 package com.traveler.useractivity.domain.rule.dedup.dto.response;
 
-import com.traveler.useractivity.domain.rule.dedup.vo.DedupSpec;
+import com.traveler.useractivity.domain.rule.dedup.definition.DedupSpec;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
@@ -32,6 +32,6 @@ public final class DedupRuleResponse {
     public record DetailDTO(
             @Schema(description = "중복제거 규칙 ID", example = "1") Long dedupRuleId,
             @Schema(description = "중복제거 규칙 이름", example = "IP 기준 중복제거") String name,
-            @Schema(description = "중복제거 규칙 목록") List<DedupSpec.Rule> rules,
+            @Schema(description = "중복제거 규칙 목록") List<DedupSpec> rules,
             @Schema(description = "활성화 여부", example = "true") boolean isActive) {}
 }
