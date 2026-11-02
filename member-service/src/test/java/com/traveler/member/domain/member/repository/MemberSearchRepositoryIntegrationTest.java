@@ -105,6 +105,23 @@ class MemberSearchRepositoryIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("가입일 기간에 날짜 범위의 양 끝을 넣어도 조회할 수 있다")
+    void search_joinedDateAtExtremes() {
+        List<Long> everyone = List.of(alice.getId(), bob.getId(), carol.getId());
+
+        assertThat(ids(new AdminMemberRequest.SearchDTO(PREFIX, null, null, null, null, LocalDate.MAX)))
+                .containsExactlyElementsOf(everyone);
+        assertThat(ids(new AdminMemberRequest.SearchDTO(PREFIX, null, null, null, null, LocalDate.MAX.minusDays(1))))
+                .containsExactlyElementsOf(everyone);
+        assertThat(ids(new AdminMemberRequest.SearchDTO(PREFIX, null, null, null, null, LocalDate.of(9999, 12, 31))))
+                .containsExactlyElementsOf(everyone);
+        assertThat(ids(new AdminMemberRequest.SearchDTO(PREFIX, null, null, null, LocalDate.MAX, null)))
+                .isEmpty();
+        assertThat(ids(new AdminMemberRequest.SearchDTO(PREFIX, null, null, null, LocalDate.MIN, null)))
+                .containsExactlyElementsOf(everyone);
+    }
+
+    @Test
     @DisplayName("가입일 기간은 한국 날짜 기준으로 양 끝을 포함한다")
     void search_joinedDateRangeIsInclusiveInKoreanDate() {
         LocalDate from = LocalDate.of(2026, 10, 1);
