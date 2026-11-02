@@ -6,6 +6,8 @@ import com.traveler.web.domain.member.client.dto.response.AuthClientResponse;
 import com.traveler.web.domain.member.dto.request.AuthRequest;
 import com.traveler.web.domain.member.dto.response.AuthResponse;
 import com.traveler.web.domain.member.mapper.AuthMapper;
+import com.traveler.web.global.exception.WebApiServiceException;
+import com.traveler.web.global.exception.code.WebApiServiceErrorCode;
 import com.traveler.web.global.security.support.AuthHttpSupport;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +40,10 @@ public class AuthFacade {
     }
 
     public AuthResponse.LoginDTO reissue(String refreshToken, HttpServletResponse response) {
+        // 쿠키가 없으면 member-service 입력값 검증(400)까지 보내지 않고 인증 실패(401)로 끝낸다
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new WebApiServiceException(WebApiServiceErrorCode.REFRESH_TOKEN_MISSING);
+        }
         AuthClientRequest.ReissueDTO clientRequest = authMapper.toClientReissueDTO(refreshToken);
 
         AuthClientResponse.LoginResult clientResponse = authClientAdapter.reissue(clientRequest);

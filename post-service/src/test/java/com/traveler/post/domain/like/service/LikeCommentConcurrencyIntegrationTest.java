@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.traveler.post.domain.comment.dto.request.CommentRequest;
 import com.traveler.post.domain.comment.dto.response.CommentResponse;
+import com.traveler.post.domain.comment.service.AdminCommentService;
 import com.traveler.post.domain.comment.service.CommentService;
 import com.traveler.post.domain.like.dto.request.LikeRequest;
 import com.traveler.post.domain.post.dto.result.PostStatsSummary;
@@ -68,6 +69,9 @@ class LikeCommentConcurrencyIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private AdminPostService adminPostService;
+
+    @Autowired
+    private AdminCommentService adminCommentService;
 
     @Autowired
     private TransactionTemplate transactionTemplate;
@@ -146,6 +150,69 @@ class LikeCommentConcurrencyIntegrationTest extends IntegrationTestSupport {
         PostStatsSummary stats = postStatsSlots.summarize(postId);
         assertThat(stats.commentCount()).isEqualTo(1);
         assertThat(stats.starSum()).isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("같은 댓글을 동시에 수정해도 별점 합계는 마지막으로 저장된 별점과 같다")
+    void concurrentUpdateOfSameComment() throws Exception {
+        Long postId = savePost();
+        long memberId = 3100L;
+        Long commentId = commentService
+                .createComment(memberId, new CommentRequest.CreateDTO(postId, "고칠 댓글", 3))
+                .commentId();
+
+        List<Throwable> errors = runConcurrently(i -> () ->
+                commentService.updateComment(commentId, memberId, new CommentRequest.UpdateDTO("수정 " + i, i % 5 + 1)));
+
+        assertThat(errors).isEmpty();
+        Integer savedStar =
+                jdbcTemplate.queryForObject("SELECT star FROM comment WHERE id = ?", Integer.class, commentId);
+        assertThat(postStatsSlots.summarize(postId).starSum()).isEqualTo(savedStar.longValue());
+    }
+
+    @Test
+    @DisplayName("같은 댓글의 수정과 삭제가 겹쳐도 통계에 지운 댓글의 별점이 남지 않는다")
+    void concurrentUpdateAndDeleteOfSameComment() throws Exception {
+        Long postId = savePost();
+        long memberId = 3200L;
+        Long commentId = commentService
+                .createComment(memberId, new CommentRequest.CreateDTO(postId, "지울 댓글", 3))
+                .commentId();
+
+        // 삭제 뒤에 도착한 수정·삭제는 COMMENT_NOT_FOUND가 정상이다
+        List<Throwable> errors = runConcurrently(i -> () -> {
+            if (i == THREADS / 2) {
+                commentService.deleteComment(commentId, memberId);
+            } else {
+                commentService.updateComment(commentId, memberId, new CommentRequest.UpdateDTO("수정", 5));
+            }
+        });
+
+        assertThat(errors).allSatisfy(error -> assertThat(error)
+                .isInstanceOf(PostServiceException.class)
+                .extracting("code")
+                .isEqualTo(PostServiceErrorCode.COMMENT_NOT_FOUND));
+        PostStatsSummary stats = postStatsSlots.summarize(postId);
+        assertThat(stats.commentCount()).isZero();
+        assertThat(stats.starSum()).isZero();
+    }
+
+    @Test
+    @DisplayName("삭제된 게시글의 댓글을 관리자가 지우고 게시글을 복구해도 지운 댓글이 통계에 남지 않는다")
+    void adminDeleteOnDeletedPostThenRestore() {
+        Long postId = savePost();
+        commentService.createComment(4001L, new CommentRequest.CreateDTO(postId, "남는 댓글", 2));
+        Long commentId = commentService
+                .createComment(4002L, new CommentRequest.CreateDTO(postId, "지울 댓글", 5))
+                .commentId();
+        jdbcTemplate.update("UPDATE post SET is_deleted = true, deleted_at = NOW() WHERE id = ?", postId);
+
+        adminCommentService.deleteComment(commentId);
+        adminPostService.restorePost(postId);
+
+        PostStatsSummary stats = postStatsSlots.summarize(postId);
+        assertThat(stats.commentCount()).isEqualTo(1);
+        assertThat(stats.starSum()).isEqualTo(2);
     }
 
     @Test

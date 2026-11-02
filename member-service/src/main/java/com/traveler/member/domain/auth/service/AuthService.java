@@ -146,14 +146,14 @@ public class AuthService {
         String savedToken = refreshTokenRepository.findByMemberId(memberId).orElseThrow(() -> {
             // 로그아웃·만료·재사용 감지로 이미 지워진 토큰
             log.warn("[Auth] 저장된 리프레시 토큰 없음 memberId={}", memberId);
-            return new MemberServiceException(MemberServiceErrorCode.INVALID_TOKEN_TYPE);
+            return new MemberServiceException(MemberServiceErrorCode.REFRESH_TOKEN_NOT_FOUND);
         });
 
         if (!savedToken.equals(TokenHashUtil.hash(requestToken))) {
             // 이미 로테이션된 이전 토큰이 다시 쓰였다: 탈취 신호이므로 저장된 토큰도 지운다
             log.warn("[Auth] 리프레시 토큰 재사용 의심, 저장된 토큰 삭제 memberId={}", memberId);
             refreshTokenRepository.deleteByMemberId(memberId);
-            throw new MemberServiceException(MemberServiceErrorCode.INVALID_TOKEN_TYPE);
+            throw new MemberServiceException(MemberServiceErrorCode.REFRESH_TOKEN_NOT_FOUND);
         }
     }
 

@@ -84,7 +84,7 @@ class StructuredLoggingConfigTest {
     @Test
     @DisplayName("local 프로필이면 콘솔은 사람이 읽는 형식을 유지하고, 파일에는 한 줄 ECS JSON으로 쓴다")
     void keepsPlainConsoleAndWritesEcsFileOnLocalProfile(CapturedOutput output) throws IOException {
-        // logging.yml의 파일 경로(logs/...)는 작업 디렉터리 기준이라, 테스트에서는 build 아래로 바꾼다.
+        // 사용자 홈의 로그 폴더에 쓰지 않는다(로컬 Fluentd가 수집한다). 테스트에서는 build 아래로 바꾼다.
         Path logFile = Path.of("build", "test-logs", "structured-logging-" + System.nanoTime() + ".log");
         context = run("local", "--logging.file.name=" + logFile);
         MDC.put(MdcKeys.USER_ID, "7");

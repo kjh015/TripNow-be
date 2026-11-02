@@ -64,12 +64,13 @@ public class AdminCommentService {
                 .detail("postId", post.getId())
                 .log();
 
+        postStatsSlots.getRandom(post.getId()).removeComment(comment.getStar());
+
         if (post.isDeleted()) {
-            // 삭제된 게시물은 검색 문서가 없으므로 통계 갱신 없이 댓글 삭제 메시지만 발행
+            // 삭제된 게시물은 검색 문서가 없으므로 검색 쪽 통계 반영 없이 댓글 삭제 메시지만 발행
             eventPublisher.publishEvent(
                     new CommentEvent.AdminDeleted(commentMapper.toDeletedMsgDTO(comment), post.getId()));
         } else {
-            postStatsSlots.getRandom(post.getId()).removeComment(comment.getStar());
             eventPublisher.publishEvent(commentMapper.toDeletedEvent(comment));
         }
 

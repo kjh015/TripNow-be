@@ -29,7 +29,8 @@ public enum MemberServiceErrorCode implements BaseErrorCode {
     MALFORMED_JWT(401, "AUTH401_7", "잘못된 구조의 JWT 토큰입니다."),
     BLACKLISTED_TOKEN(401, "AUTH401_8", "로그아웃된 토큰입니다. 다시 로그인해주세요."),
     TOKEN_REISSUE_FAILED(401, "AUTH401_9", "토큰 재발급에 실패했습니다."),
-    REFRESH_TOKEN_NOT_FOUND(404, "AUTH404_2", "존재하지 않거나 만료된 리프레시 토큰입니다."),
+    // 저장된 리프레시 토큰이 없거나(로그아웃·만료·재사용 감지로 삭제) 저장된 값과 다른 경우
+    REFRESH_TOKEN_NOT_FOUND(401, "AUTH401_10", "존재하지 않거나 만료된 리프레시 토큰입니다. 다시 로그인해주세요."),
 
     // Infra - Kafka
     TOPIC_NOT_CONFIGURED(500, "EVENT500_1", "해당 이벤트 타입에 대한 Kafka 토픽 설정이 누락되었습니다."),

@@ -5,10 +5,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.traveler.gateway.testsupport.IntegrationTestSupport;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.gateway.config.GatewayProperties;
 import org.springframework.cloud.gateway.route.Route;
+import org.springframework.cloud.gateway.route.RouteDefinition;
 import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
@@ -19,6 +22,9 @@ class GatewayRouteMappingTest extends IntegrationTestSupport {
 
     @Autowired
     private RouteLocator routeLocator;
+
+    @Autowired
+    private GatewayProperties gatewayProperties;
 
     @ParameterizedTest(name = "{0} {1} → {2}")
     @DisplayName("Rate Limiting 대상은 전용 라우트로, 나머지는 기존 라우트로 간다")
@@ -56,5 +62,23 @@ class GatewayRouteMappingTest extends IntegrationTestSupport {
 
         assertThat(matched).isNotEmpty();
         assertThat(matched.getFirst()).isEqualTo(expectedRouteId);
+    }
+
+    @Test
+    @DisplayName("RateLimitRouteValidator가 보는 GatewayProperties에 yml의 RateLimitFilter 라우트가 모두 들어 있다")
+    void validatorSeesRateLimitRoutes() {
+        List<String> rateLimitedRouteIds = gatewayProperties.getRoutes().stream()
+                .filter(route ->
+                        route.getFilters().stream().anyMatch(filter -> "RateLimitFilter".equals(filter.getName())))
+                .map(RouteDefinition::getId)
+                .toList();
+
+        assertThat(rateLimitedRouteIds)
+                .containsExactlyInAnyOrder(
+                        "web-api-service-signup",
+                        "web-api-service-login",
+                        "web-api-service-search-me",
+                        "web-api-service-search",
+                        "web-api-service-write");
     }
 }

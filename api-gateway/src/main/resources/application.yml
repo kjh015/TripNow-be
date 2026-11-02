@@ -102,15 +102,16 @@ spring:
                 requiredRole: ROLE_ADMIN
 
       httpclient:
-        connect-timeout: 5000
+        connect-timeout: 2000
         response-timeout: 5s
 
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOrigins: ${ALLOWED_ORIGINS:http://localhost:3000}
+            allowedOrigins: ${ALLOWED_ORIGINS:https://tripnow.shop}
             allowedHeaders:
-              - "*"
+              - "Content-Type"
+              - "Authorization"
             exposedHeaders:
               - "Authorization"
               - "Set-Cookie"

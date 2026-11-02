@@ -111,7 +111,7 @@ class TracingLogCorrelationTest {
                 .web(WebApplicationType.NONE)
                 .profiles(profile)
                 .properties("spring.application.name=test-service", "spring.config.import=classpath:logging.yml")
-                // local 프로필의 로그 파일(logs/...)을 모듈 폴더에 만들지 않는다. 빈 값이면 Boot가 파일 출력을 끈다
+                // 사용자 홈의 로그 폴더에 쓰지 않는다(로컬 Fluentd가 수집한다). 빈 값이면 Boot가 파일 출력을 끈다
                 .run("--logging.file.name=");
     }
 

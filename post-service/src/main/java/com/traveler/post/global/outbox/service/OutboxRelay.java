@@ -2,6 +2,7 @@ package com.traveler.post.global.outbox.service;
 
 import com.traveler.post.global.config.AsyncConfig;
 import com.traveler.post.global.kafka.KafkaProducer;
+import io.micrometer.context.ContextSnapshotFactory;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +12,9 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 public class OutboxRelay {
+    private static final ContextSnapshotFactory CONTEXT_SNAPSHOT_FACTORY =
+            ContextSnapshotFactory.builder().build();
+
     private final KafkaProducer kafkaProducer;
     private final OutboxStatusManager outboxStatusManager;
     private final Executor statusExecutor;
@@ -29,6 +33,9 @@ public class OutboxRelay {
      * 상태 갱신은 프로듀서 전송 스레드가 아닌 statusExecutor에서 해, DB 커밋을 기다리는 동안에도 다음 메시지 전송이 멈추지 않게 한다
      */
     public void relayAsync(String eventId, String topic, String key, String eventType, String payload) {
+        // 갱신 로그를 게시글 요청과 traceId로 묶도록, 전송을 요청한 스레드의 trace와 MDC userId를 갱신 스레드로 옮긴다.
+        // 콜백을 statusExecutor에 넘기는 쪽은 프로듀서 전송 스레드라서, Executor의 TaskDecorator로는 이 값이 옮겨지지 않는다
+        Executor tracedStatusExecutor = CONTEXT_SNAPSHOT_FACTORY.captureAll().wrapExecutor(statusExecutor);
         kafkaProducer
                 .send(topic, key, eventId, eventType, payload)
                 .whenCompleteAsync(
@@ -49,7 +56,7 @@ public class OutboxRelay {
                                 log.error("Outbox 상태 갱신 실패 [ID: {}]", eventId, statusEx);
                             }
                         },
-                        statusExecutor);
+                        tracedStatusExecutor);
     }
 
     /**

@@ -53,7 +53,7 @@ public class CommentService {
     }
 
     public CommentResponse.UpdateDTO updateComment(Long commentId, Long memberId, CommentRequest.UpdateDTO dto) {
-        Comment comment = getOwnedComment(commentId, memberId);
+        Comment comment = getOwnedCommentWithLock(commentId, memberId);
         Long postId = comment.getPost().getId();
         validatePostExists(postId);
 
@@ -67,12 +67,7 @@ public class CommentService {
     }
 
     public CommentResponse.DeleteDTO deleteComment(Long commentId, Long memberId) {
-        // 탈퇴 정리 같은 다른 삭제 요청과 겹쳐도 PostStats가 두 번 갱신되지 않게 댓글을 잠가 조회한다
-        Comment comment = validateOwner(
-                commentRepository
-                        .findByIdWithLock(commentId)
-                        .orElseThrow(() -> new PostServiceException(PostServiceErrorCode.COMMENT_NOT_FOUND)),
-                memberId);
+        Comment comment = getOwnedCommentWithLock(commentId, memberId);
         Long postId = comment.getPost().getId();
         validatePostExists(postId);
 
@@ -114,15 +109,12 @@ public class CommentService {
         commentRepository.hardDeleteCommentsByIds(ids);
     }
 
-    private Comment getOwnedComment(Long commentId, Long memberId) {
+    // 같은 댓글의 수정·삭제·탈퇴 정리가 겹쳐도 PostStats가 어긋나지 않게 댓글을 잠가 조회한다
+    private Comment getOwnedCommentWithLock(Long commentId, Long memberId) {
         Comment comment = commentRepository
-                .findById(commentId)
+                .findByIdWithLock(commentId)
                 .orElseThrow(() -> new PostServiceException(PostServiceErrorCode.COMMENT_NOT_FOUND));
 
-        return validateOwner(comment, memberId);
-    }
-
-    private Comment validateOwner(Comment comment, Long memberId) {
         if (!comment.getMemberId().equals(memberId)) {
             throw new PostServiceException(ErrorCode.FORBIDDEN);
         }

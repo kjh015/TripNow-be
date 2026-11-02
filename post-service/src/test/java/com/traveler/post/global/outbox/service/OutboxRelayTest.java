@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
+import com.traveler.common.support.logging.MdcKeys;
 import com.traveler.post.global.kafka.KafkaProducer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.MDC;
 import org.springframework.kafka.support.SendResult;
 
 @ExtendWith(MockitoExtension.class)
@@ -71,6 +73,29 @@ class OutboxRelayTest {
         verify(outboxStatusManager, timeout(TIMEOUT_MS)).updateToSent(EVENT_ID);
         verify(outboxStatusManager, never()).updateToFailed(anyString());
         assertThat(updatedOn.get()).isEqualTo(STATUS_THREAD);
+    }
+
+    @Test
+    @DisplayName("상태 갱신 스레드에 전송을 요청한 스레드의 MDC userId가 옮겨진다 (프로듀서 전송 스레드에는 값이 없다)")
+    void statusUpdateCarriesCallerContext() throws InterruptedException {
+        AtomicReference<String> userIdOnUpdate = new AtomicReference<>();
+        willAnswer(invocation -> {
+                    userIdOnUpdate.set(MDC.get(MdcKeys.USER_ID));
+                    return null;
+                })
+                .given(outboxStatusManager)
+                .updateToSent(EVENT_ID);
+
+        MDC.put(MdcKeys.USER_ID, "7");
+        try {
+            relay();
+        } finally {
+            MDC.remove(MdcKeys.USER_ID);
+        }
+        completeOnProducerThread(() -> sendFuture.complete(null));
+
+        verify(outboxStatusManager, timeout(TIMEOUT_MS)).updateToSent(EVENT_ID);
+        assertThat(userIdOnUpdate.get()).isEqualTo("7");
     }
 
     @Test
