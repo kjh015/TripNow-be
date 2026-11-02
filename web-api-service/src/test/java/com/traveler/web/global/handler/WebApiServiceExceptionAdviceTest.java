@@ -5,6 +5,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.traveler.web.global.exception.WebApiServiceException;
+import com.traveler.web.global.exception.code.WebApiServiceErrorCode;
 import feign.RetryableException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 class WebApiServiceExceptionAdviceTest {
 
-    private final MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new TimeoutController())
+    private final MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new FailingController())
             .setControllerAdvice(new WebApiServiceExceptionAdvice())
             .build();
 
@@ -27,12 +29,25 @@ class WebApiServiceExceptionAdviceTest {
                 .andExpect(jsonPath("$.code").value("WEB503_1"));
     }
 
+    @Test
+    @DisplayName("재발급 요청에 리프레시 토큰이 없으면 401 WEB401_1로 응답한다")
+    void respondsUnauthorizedOnRefreshTokenMissing() throws Exception {
+        mockMvc.perform(get("/refresh-token-missing"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("WEB401_1"));
+    }
+
     @RestController
-    static class TimeoutController {
+    static class FailingController {
 
         @GetMapping("/timeout")
         String timeout() {
             throw mock(RetryableException.class);
+        }
+
+        @GetMapping("/refresh-token-missing")
+        String refreshTokenMissing() {
+            throw new WebApiServiceException(WebApiServiceErrorCode.REFRESH_TOKEN_MISSING);
         }
     }
 }

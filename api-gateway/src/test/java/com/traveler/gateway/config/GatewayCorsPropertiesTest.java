@@ -3,6 +3,7 @@ package com.traveler.gateway.config;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -11,6 +12,7 @@ import org.springframework.boot.DefaultBootstrapContext;
 import org.springframework.boot.context.config.ConfigDataEnvironmentPostProcessor;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.cloud.gateway.config.GlobalCorsProperties;
+import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.web.cors.CorsConfiguration;
@@ -24,6 +26,7 @@ class GatewayCorsPropertiesTest {
     void usesOperationalValues(String profile) {
         CorsConfiguration cors = corsOf(profile);
 
+        assertThat(cors.getAllowedOrigins()).containsExactly("https://tripnow.shop");
         assertThat(cors.getAllowedHeaders()).containsExactly("Content-Type", "Authorization");
         assertThat(cors.getAllowedMethods()).contains("PATCH");
         assertThat(cors.getExposedHeaders()).contains("Authorization", "X-Trace-Id");
@@ -35,6 +38,7 @@ class GatewayCorsPropertiesTest {
     void relaxesOnlyOnLocal() {
         CorsConfiguration cors = corsOf("local");
 
+        assertThat(cors.getAllowedOrigins()).containsExactly("http://localhost:3000");
         assertThat(cors.getAllowedHeaders()).containsExactly("*");
         assertThat(cors.getAllowedMethods()).contains("PATCH");
         assertThat(cors.getExposedHeaders()).contains("Authorization", "X-Trace-Id");
@@ -42,6 +46,12 @@ class GatewayCorsPropertiesTest {
 
     private static CorsConfiguration corsOf(String profile) {
         StandardEnvironment environment = new StandardEnvironment();
+        // 실행 환경의 ALLOWED_ORIGINS와 관계없이 yml에 적힌 기본값을 확인한다
+        environment
+                .getPropertySources()
+                .replace(
+                        StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME,
+                        new MapPropertySource(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME, Map.of()));
         List<String> profiles = "default".equals(profile) ? List.of() : List.of(profile);
         ConfigDataEnvironmentPostProcessor.applyTo(
                 environment, new DefaultResourceLoader(), new DefaultBootstrapContext(), profiles);

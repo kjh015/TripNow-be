@@ -49,6 +49,25 @@ class RateLimitRouteValidatorTest {
     }
 
     @Test
+    @DisplayName("name/args 형식으로 policy 키에 있는 정책을 쓰면 통과한다")
+    void passesWithNamedPolicyArg() {
+        RateLimitRouteValidator validator = validatorOf(namedFilter("policy", "write"));
+
+        assertThatCode(validator::afterPropertiesSet).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("name/args 형식에서 키를 잘못 쓰면 값이 있는 정책이어도 기동을 실패시킨다")
+    void failsWhenPolicyArgKeyIsWrong() {
+        RateLimitRouteValidator validator = validatorOf(namedFilter("polciy", "write"));
+
+        assertThatThrownBy(validator::afterPropertiesSet)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("test-route")
+                .hasMessageContaining("polciy");
+    }
+
+    @Test
     @DisplayName("다른 필터의 인자는 검사하지 않는다")
     void ignoresOtherFilters() {
         RateLimitRouteValidator validator = validatorOf("StripPrefix=1");
@@ -56,10 +75,21 @@ class RateLimitRouteValidatorTest {
         assertThatCode(validator::afterPropertiesSet).doesNotThrowAnyException();
     }
 
+    private static FilterDefinition namedFilter(String key, String value) {
+        FilterDefinition filter = new FilterDefinition();
+        filter.setName("RateLimitFilter");
+        filter.setArgs(Map.of(key, value));
+        return filter;
+    }
+
     private RateLimitRouteValidator validatorOf(String filter) {
+        return validatorOf(new FilterDefinition(filter));
+    }
+
+    private RateLimitRouteValidator validatorOf(FilterDefinition filter) {
         RouteDefinition route = new RouteDefinition();
         route.setId("test-route");
-        route.setFilters(List.of(new FilterDefinition(filter)));
+        route.setFilters(List.of(filter));
         GatewayProperties gatewayProperties = new GatewayProperties();
         gatewayProperties.setRoutes(List.of(route));
         return new RateLimitRouteValidator(gatewayProperties, properties);
