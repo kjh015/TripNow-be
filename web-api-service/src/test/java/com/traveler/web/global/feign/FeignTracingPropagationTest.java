@@ -23,8 +23,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.actuate.autoconfigure.observation.ObservationAutoConfiguration;
-import org.springframework.boot.actuate.autoconfigure.tracing.BraveAutoConfiguration;
+import org.springframework.boot.actuate.autoconfigure.opentelemetry.OpenTelemetryAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.tracing.MicrometerTracingAutoConfiguration;
+import org.springframework.boot.actuate.autoconfigure.tracing.OpenTelemetryTracingAutoConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.http.HttpMessageConvertersAutoConfiguration;
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
@@ -60,7 +61,8 @@ class FeignTracingPropagationTest {
         HttpMessageConvertersAutoConfiguration.class,
         ObservationAutoConfiguration.class,
         MicrometerTracingAutoConfiguration.class,
-        BraveAutoConfiguration.class,
+        OpenTelemetryAutoConfiguration.class,
+        OpenTelemetryTracingAutoConfiguration.class,
         FeignAutoConfiguration.class,
         CircuitBreakerAutoConfiguration.class
     })
