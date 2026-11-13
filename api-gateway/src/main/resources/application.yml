@@ -1,6 +1,16 @@
 server:
   port: 8000
 
+# actuator를 관리 포트로 분리한다. ALB 대상 그룹에는 서비스 포트(8000)만 등록되어 외부 요청이 actuator에 닿지 않는다 (작업기록 N89)
+management:
+  server:
+    port: 8090
+  endpoint:
+    health:
+      probes:
+        # liveness·readiness를 서비스 포트의 /livez·/readyz에도 노출한다. ALB·ECS 헬스체크가 이 경로를 쓴다
+        add-additional-paths: true
+
 spring:
   application:
     name: api-gateway
@@ -132,6 +142,9 @@ eureka:
   instance:
     prefer-ip-address: true
     instance-id: ${spring.cloud.client.ip-address}:${spring.application.name}:${server.port}
+    # Prometheus가 관리 포트로 수집하도록 알린다 (monitoring-compose의 relabel_configs)
+    metadata-map:
+      management.port: ${management.server.port}
   client:
     register-with-eureka: true
     fetch-registry: true

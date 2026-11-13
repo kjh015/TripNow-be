@@ -10,6 +10,7 @@ management:
   endpoint:
     health:
       # ECS 컨테이너 헬스체크: /actuator/health/liveness.
+      # 게이트웨이는 관리 포트를 분리해 서비스 포트의 /livez를 쓴다(api-gateway application.yml)
       # liveness는 DB·Redis·ES 같은 외부 의존 상태를 합산하지 않아 외부 의존 장애로 연쇄 재시작되지 않는다
       probes:
         enabled: true
