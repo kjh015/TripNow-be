@@ -32,6 +32,9 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: 6379
+      # 무응답 Redis에 탈퇴·로그아웃 요청이 오래 매달리지 않게 한다 (Lettuce 기본값 60s). 게이트웨이와 같은 값
+      timeout: 500ms
+      connect-timeout: 500ms
 
   # 회원 이벤트를 발행(Outbox)하고, post-service의 정리 완료 이벤트를 소비한다.
   kafka:

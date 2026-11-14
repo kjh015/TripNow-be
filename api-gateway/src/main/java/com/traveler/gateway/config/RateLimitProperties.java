@@ -25,7 +25,10 @@ public record RateLimitProperties(boolean enabled, Map<String, Policy> policies)
      */
     public record Policy(KeyType key, int replenishRate, int burstCapacity, int requestedTokens) {
 
-        /** 잘못된 값이면 바인딩에서 실패시켜 게이트웨이가 기동하지 않게 한다 (필터 생성 때 실패하면 그 라우트만 빠진 채 기동된다) */
+        /**
+         * 잘못된 값이면 바인딩에서 실패시켜 게이트웨이가 기동하지 않게 한다.
+         * requested-tokens > burst-capacity처럼 필터 생성 때는 실패하지 않고 요청마다 거절되는 값도 있어 여기서 막는다.
+         */
         public Policy {
             Objects.requireNonNull(key, "app.rate-limit.policies.*.key는 필수다");
             if (replenishRate < 1 || burstCapacity < 1 || requestedTokens < 1) {
