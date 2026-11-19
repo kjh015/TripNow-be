@@ -15,6 +15,6 @@ public class DownstreamFailurePredicate implements Predicate<Throwable> {
 
     @Override
     public boolean test(Throwable throwable) {
-        return throwable instanceof Exception exception && ExceptionUtils.isRetryableException(exception);
+        return ExceptionUtils.isDownstreamFailure(throwable);
     }
 }

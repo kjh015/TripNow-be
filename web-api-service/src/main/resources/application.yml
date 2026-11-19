@@ -25,6 +25,9 @@ spring:
         # 레지스트리 조회 주기에 맞춰 LB 인스턴스 캐시도 줄인다 (기본 35s)
         ttl: 5s
     openfeign:
+      circuitbreaker:
+        # 모든 Feign 메서드를 서킷 브레이커로 감싼다. 서킷 이름은 DownstreamCircuitBreakerConfig가 하위 서비스 이름으로 정한다
+        enabled: true
       httpclient:
         hc5:
           enabled: true
@@ -40,6 +43,14 @@ spring:
             readTimeout: 1500
           SearchPostClient:
             readTimeout: 2000
+    circuitbreaker:
+      resilience4j:
+        # 호출을 별도 스레드 풀에서 실행하지 않는다(TimeLimiter도 함께 빠진다). Feign이 요청 스레드의 인증·추적 정보를 그대로 읽는다
+        disable-thread-pool: true
+      bulkhead:
+        resilience4j:
+          # Bulkhead가 켜지면 호출이 Bulkhead 스레드 풀로 넘어간다. 클래스패스와 관계없이 끈다
+          enabled: false
   security:
     oauth2:
       client:
@@ -60,7 +71,7 @@ spring:
             user-info-uri: https://kapi.kakao.com/v2/user/me
             user-name-attribute: id # 카카오 사용자 정보의 Key값 (기본 id)
 
-# 서킷 브레이커: 하위 서비스 단위 4개
+# 서킷 브레이커: 하위 서비스 단위 4개. instances 키는 @FeignClient name(DownstreamServiceNames)과 같아야 한다
 resilience4j:
   circuitbreaker:
     configs:

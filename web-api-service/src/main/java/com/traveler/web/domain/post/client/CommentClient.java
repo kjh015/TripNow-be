@@ -4,11 +4,12 @@ import com.traveler.common.core.response.ApiResponse;
 import com.traveler.web.domain.post.client.dto.request.CommentClientRequest;
 import com.traveler.web.domain.post.client.dto.response.CommentClientResponse;
 import com.traveler.web.global.feign.config.FeignClientConfig;
+import com.traveler.web.global.resilience.DownstreamServiceNames;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
 @FeignClient(
-        name = "post-service",
+        name = DownstreamServiceNames.POST,
         contextId = "CommentClient",
         path = "/v1/comments",
         configuration = FeignClientConfig.class)

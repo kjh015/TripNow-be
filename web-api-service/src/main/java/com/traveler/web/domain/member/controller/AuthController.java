@@ -66,7 +66,7 @@ public class AuthController {
         } catch (Exception e) {
             // 하위 서비스 통신 장애 또는 내부 로직 실패 시,
             // 프론트엔드가 동일한 코드로 재시도할 수 있도록 Redis에 코드 복구 (보상 트랜잭션)
-            if (ExceptionUtils.isRetryableException(e)) {
+            if (ExceptionUtils.isDownstreamFailure(e)) {
                 authCodeService.restoreCode(dto.code(), oauthLoginDTO);
             }
             // 복구 후 원래 터졌던 예외를 다시 던져서 GlobalExceptionHandler가 처리

@@ -17,11 +17,11 @@ import com.traveler.web.domain.member.client.MemberClient;
 import com.traveler.web.domain.member.client.dto.response.MemberClientResponse;
 import com.traveler.web.global.exception.WebApiServiceException;
 import com.traveler.web.global.feign.decoder.ServiceErrorCode;
-import com.traveler.web.global.resilience.DownstreamCallExecutor;
 import com.traveler.web.global.resilience.DownstreamServiceNames;
 import feign.Request;
 import feign.RetryableException;
-import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,6 +35,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cloud.client.circuitbreaker.NoFallbackAvailableException;
 
 @ExtendWith(MockitoExtension.class)
 class MemberClientAdapterTest {
@@ -47,15 +48,12 @@ class MemberClientAdapterTest {
     private MemberNicknameCache memberNicknameCache;
     private MemberClientAdapter memberClientAdapter;
 
-    // Resilience4j 라이브러리 기본 설정(ofDefaults)으로 서킷을 만든다. 기본값은 호출이 100번 쌓여야 판정하므로
-    // 이 테스트의 호출 수로는 서킷이 열리지 않고, 닉네임 대체 동작만 확인할 수 있다. 서킷 동작은 DownstreamCallExecutorTest가 확인한다
+    // 운영에서는 Spring Cloud CircuitBreaker가 Feign 호출을 감싸 예외를 NoFallbackAvailableException에 담아 던진다.
+    // 목 MemberClient도 같은 모양으로 던지게 해 닉네임 대체 동작만 확인한다. 서킷 동작은 DownstreamCircuitBreakerWireMockTest가 확인한다
     @BeforeEach
     void setUp() {
-        CircuitBreakerRegistry registry = CircuitBreakerRegistry.ofDefaults();
-        registry.circuitBreaker(DownstreamServiceNames.MEMBER);
         memberNicknameCache = new MemberNicknameCache();
-        memberClientAdapter =
-                new MemberClientAdapter(memberClient, new DownstreamCallExecutor(registry), memberNicknameCache);
+        memberClientAdapter = new MemberClientAdapter(memberClient, memberNicknameCache);
     }
 
     @Nested
@@ -76,7 +74,7 @@ class MemberClientAdapterTest {
         @Test
         @DisplayName("member-service가 5xx를 반환하면 모든 회원을 기본 닉네임으로 채운다")
         void serverError_fallsBackToDefault() {
-            given(memberClient.getMemberProfiles(anySet())).willThrow(serviceException(503));
+            given(memberClient.getMemberProfiles(anySet())).willThrow(wrapped(serviceException(503)));
 
             Map<Long, String> result = memberClientAdapter.getNicknameMap(Set.of(1L, 2L));
 
@@ -86,7 +84,7 @@ class MemberClientAdapterTest {
         @Test
         @DisplayName("타임아웃·연결 실패(RetryableException)면 기본 닉네임으로 채운다")
         void networkError_fallsBackToDefault() {
-            given(memberClient.getMemberProfiles(anySet())).willThrow(retryableException());
+            given(memberClient.getMemberProfiles(anySet())).willThrow(wrapped(retryableException()));
 
             Map<Long, String> result = memberClientAdapter.getNicknameMap(Set.of(1L));
 
@@ -97,10 +95,23 @@ class MemberClientAdapterTest {
         @DisplayName("member-service가 4xx를 반환하면 예외를 그대로 전파한다")
         void clientError_propagates() {
             WebApiServiceException exception = serviceException(400);
-            given(memberClient.getMemberProfiles(anySet())).willThrow(exception);
+            NoFallbackAvailableException wrapped = wrapped(exception);
+            given(memberClient.getMemberProfiles(anySet())).willThrow(wrapped);
 
             assertThatThrownBy(() -> memberClientAdapter.getNicknameMap(Set.of(1L)))
+                    .isSameAs(wrapped)
+                    .cause()
                     .isSameAs(exception);
+        }
+
+        @Test
+        @DisplayName("서킷이 열려 있으면 모든 회원을 기본 닉네임으로 채운다")
+        void circuitOpen_fallsBackToDefault() {
+            given(memberClient.getMemberProfiles(anySet())).willThrow(wrapped(callNotPermitted()));
+
+            Map<Long, String> result = memberClientAdapter.getNicknameMap(Set.of(1L, 2L));
+
+            assertThat(result).containsExactlyInAnyOrderEntriesOf(Map.of(1L, DEFAULT_NICKNAME, 2L, DEFAULT_NICKNAME));
         }
 
         @Test
@@ -137,7 +148,7 @@ class MemberClientAdapterTest {
         @Test
         @DisplayName("member-service가 5xx를 반환하면 기본 닉네임을 반환한다")
         void serverError_fallsBackToDefault() {
-            given(memberClient.getMemberProfile(anyLong())).willThrow(serviceException(500));
+            given(memberClient.getMemberProfile(anyLong())).willThrow(wrapped(serviceException(500)));
 
             assertThat(memberClientAdapter.getMemberNickname(1L)).isEqualTo(DEFAULT_NICKNAME);
         }
@@ -146,9 +157,21 @@ class MemberClientAdapterTest {
         @DisplayName("member-service가 4xx를 반환하면 예외를 그대로 전파한다")
         void clientError_propagates() {
             WebApiServiceException exception = serviceException(404);
-            given(memberClient.getMemberProfile(anyLong())).willThrow(exception);
+            NoFallbackAvailableException wrapped = wrapped(exception);
+            given(memberClient.getMemberProfile(anyLong())).willThrow(wrapped);
 
-            assertThatThrownBy(() -> memberClientAdapter.getMemberNickname(1L)).isSameAs(exception);
+            assertThatThrownBy(() -> memberClientAdapter.getMemberNickname(1L))
+                    .isSameAs(wrapped)
+                    .cause()
+                    .isSameAs(exception);
+        }
+
+        @Test
+        @DisplayName("서킷이 열려 있으면 기본 닉네임을 반환한다")
+        void circuitOpen_fallsBackToDefault() {
+            given(memberClient.getMemberProfile(anyLong())).willThrow(wrapped(callNotPermitted()));
+
+            assertThat(memberClientAdapter.getMemberNickname(1L)).isEqualTo(DEFAULT_NICKNAME);
         }
     }
 
@@ -171,7 +194,7 @@ class MemberClientAdapterTest {
         @Test
         @DisplayName("타임아웃·연결 실패면 기본 닉네임을 반환한다")
         void networkError_fallsBackToDefault() {
-            given(memberClient.getMyProfile()).willThrow(retryableException());
+            given(memberClient.getMyProfile()).willThrow(wrapped(retryableException()));
 
             assertThat(memberClientAdapter.getMyNickname()).isEqualTo(DEFAULT_NICKNAME);
         }
@@ -180,9 +203,21 @@ class MemberClientAdapterTest {
         @DisplayName("member-service가 4xx를 반환하면 예외를 그대로 전파한다")
         void clientError_propagates() {
             WebApiServiceException exception = serviceException(401);
-            given(memberClient.getMyProfile()).willThrow(exception);
+            NoFallbackAvailableException wrapped = wrapped(exception);
+            given(memberClient.getMyProfile()).willThrow(wrapped);
 
-            assertThatThrownBy(() -> memberClientAdapter.getMyNickname()).isSameAs(exception);
+            assertThatThrownBy(() -> memberClientAdapter.getMyNickname())
+                    .isSameAs(wrapped)
+                    .cause()
+                    .isSameAs(exception);
+        }
+
+        @Test
+        @DisplayName("서킷이 열려 있으면 기본 닉네임을 반환한다")
+        void circuitOpen_fallsBackToDefault() {
+            given(memberClient.getMyProfile()).willThrow(wrapped(callNotPermitted()));
+
+            assertThat(memberClientAdapter.getMyNickname()).isEqualTo(DEFAULT_NICKNAME);
         }
     }
 
@@ -235,7 +270,7 @@ class MemberClientAdapterTest {
         @DisplayName("상세: 장애로 받은 기본 닉네임은 캐시에 넣지 않아, 복구 뒤 바로 실제 닉네임을 받는다")
         void memberNickname_fallbackNotCached() {
             given(memberClient.getMemberProfile(1L))
-                    .willThrow(serviceException(503))
+                    .willThrow(wrapped(serviceException(503)))
                     .willReturn(ApiResponse.onSuccess(SuccessCode.OK, profile(1L, "여행자")));
 
             assertThat(memberClientAdapter.getMemberNickname(1L)).isEqualTo(DEFAULT_NICKNAME);
@@ -246,7 +281,7 @@ class MemberClientAdapterTest {
         @Test
         @DisplayName("목록: 장애로 받은 기본 닉네임은 캐시에 넣지 않는다")
         void nicknameMap_fallbackNotCached() {
-            given(memberClient.getMemberProfiles(anySet())).willThrow(retryableException());
+            given(memberClient.getMemberProfiles(anySet())).willThrow(wrapped(retryableException()));
 
             memberClientAdapter.getNicknameMap(Set.of(1L, 2L));
 
@@ -295,7 +330,7 @@ class MemberClientAdapterTest {
         @DisplayName("회원 정보 수정이 실패하면 캐시 항목을 그대로 둔다")
         void updateMember_failure_keepsCache() {
             memberNicknameCache.put(1L, "여행자", memberNicknameCache.version());
-            WebApiServiceException exception = serviceException(400);
+            NoFallbackAvailableException exception = wrapped(serviceException(400));
             given(memberClient.updateMember(any())).willThrow(exception);
 
             assertThatThrownBy(() -> memberClientAdapter.updateMember(null)).isSameAs(exception);
@@ -318,6 +353,17 @@ class MemberClientAdapterTest {
 
     private static MemberClientResponse.ProfileDTO profile(Long memberId, String nickname) {
         return new MemberClientResponse.ProfileDTO(memberId, nickname, null, null, null);
+    }
+
+    // Spring Cloud CircuitBreaker(fallback 없음)가 Feign 호출 예외를 감싸는 형태와 같게 만든다
+    private static NoFallbackAvailableException wrapped(Throwable cause) {
+        return new NoFallbackAvailableException("No fallback available.", cause);
+    }
+
+    private static CallNotPermittedException callNotPermitted() {
+        CircuitBreaker circuitBreaker = CircuitBreaker.ofDefaults(DownstreamServiceNames.MEMBER);
+        circuitBreaker.transitionToOpenState();
+        return CallNotPermittedException.createCallNotPermittedException(circuitBreaker);
     }
 
     // FeignErrorDecoder가 하위 서비스 에러 응답을 변환한 형태와 같게 만든다

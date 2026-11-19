@@ -5,13 +5,14 @@ import com.traveler.common.core.response.PageResponse;
 import com.traveler.web.domain.useractivity.client.dto.request.LogProcessClientRequest;
 import com.traveler.web.domain.useractivity.client.dto.response.LogProcessClientResponse;
 import com.traveler.web.global.feign.config.FeignClientConfig;
+import com.traveler.web.global.resilience.DownstreamServiceNames;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.cloud.openfeign.SpringQueryMap;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
 @FeignClient(
-        name = "user-activity-service",
+        name = DownstreamServiceNames.USER_ACTIVITY,
         contextId = "LogProcessClient",
         path = "/v1/admin/log-processes",
         configuration = FeignClientConfig.class)

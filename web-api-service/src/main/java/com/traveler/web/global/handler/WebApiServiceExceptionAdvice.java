@@ -6,6 +6,7 @@ import com.traveler.common.core.response.ApiResponse;
 import com.traveler.web.global.exception.WebApiServiceException;
 import com.traveler.web.global.exception.code.WebApiServiceErrorCode;
 import feign.RetryableException;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -43,6 +44,18 @@ public class WebApiServiceExceptionAdvice implements BaseExceptionAdvice {
                 request.getMethod(),
                 request.getRequestURI(),
                 ex.getMessage());
+        return createErrorResponse(WebApiServiceErrorCode.DOWNSTREAM_UNAVAILABLE, null);
+    }
+
+    /** 서킷이 열려 하위 서비스를 부르지 않았다. 열리기 전의 타임아웃·연결 실패와 같은 503으로 응답한다. 상태 변경은 CircuitBreakerStateLogger가 남긴다 */
+    @ExceptionHandler(CallNotPermittedException.class)
+    protected ResponseEntity<ApiResponse<Void>> handleCallNotPermittedException(
+            CallNotPermittedException ex, HttpServletRequest request) {
+        log.warn(
+                "[Circuit Open] Method: {}, URI: {}, Circuit: {}",
+                request.getMethod(),
+                request.getRequestURI(),
+                ex.getCausingCircuitBreakerName());
         return createErrorResponse(WebApiServiceErrorCode.DOWNSTREAM_UNAVAILABLE, null);
     }
 

@@ -14,8 +14,9 @@ import com.traveler.web.domain.member.client.AdminMemberClient;
 import com.traveler.web.domain.member.client.dto.request.AdminMemberClientRequest;
 import com.traveler.web.domain.member.enums.Provider;
 import com.traveler.web.domain.member.enums.RoleType;
-import com.traveler.web.global.resilience.DownstreamCallExecutor;
+import com.traveler.web.global.resilience.DownstreamCircuitBreakerConfig;
 import io.github.resilience4j.springboot3.circuitbreaker.autoconfigure.CircuitBreakerAutoConfiguration;
+import io.github.resilience4j.springboot3.timelimiter.autoconfigure.TimeLimiterAutoConfiguration;
 import java.time.LocalDate;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,6 +27,7 @@ import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.http.HttpMessageConvertersAutoConfiguration;
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cloud.circuitbreaker.resilience4j.Resilience4JAutoConfiguration;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.cloud.openfeign.FeignAutoConfiguration;
 import org.springframework.context.annotation.Configuration;
@@ -56,10 +58,12 @@ class AdminMemberClientWireMockTest {
         JacksonAutoConfiguration.class,
         HttpMessageConvertersAutoConfiguration.class,
         FeignAutoConfiguration.class,
-        CircuitBreakerAutoConfiguration.class
+        CircuitBreakerAutoConfiguration.class,
+        TimeLimiterAutoConfiguration.class,
+        Resilience4JAutoConfiguration.class
     })
     @EnableFeignClients(clients = AdminMemberClient.class)
-    @Import({AdminMemberClientAdapter.class, DownstreamCallExecutor.class, MemberNicknameCache.class})
+    @Import({AdminMemberClientAdapter.class, DownstreamCircuitBreakerConfig.class, MemberNicknameCache.class})
     static class FeignTestConfig {}
 
     @DynamicPropertySource

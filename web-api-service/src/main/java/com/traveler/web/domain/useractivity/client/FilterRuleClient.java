@@ -5,13 +5,14 @@ import com.traveler.common.core.response.PageResponse;
 import com.traveler.web.domain.useractivity.client.dto.request.FilterRuleClientRequest;
 import com.traveler.web.domain.useractivity.client.dto.response.FilterRuleClientResponse;
 import com.traveler.web.global.feign.config.FeignClientConfig;
+import com.traveler.web.global.resilience.DownstreamServiceNames;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.cloud.openfeign.SpringQueryMap;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
 @FeignClient(
-        name = "user-activity-service",
+        name = DownstreamServiceNames.USER_ACTIVITY,
         contextId = "FilterRuleClient",
         path = "/v1/admin",
         configuration = FeignClientConfig.class)

@@ -12,8 +12,12 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import com.traveler.web.domain.member.adapter.MemberClientAdapter;
 import com.traveler.web.domain.member.cache.MemberNicknameCache;
 import com.traveler.web.domain.member.client.MemberClient;
-import com.traveler.web.global.resilience.DownstreamCallExecutor;
+import com.traveler.web.global.resilience.DownstreamCircuitBreakerConfig;
+import com.traveler.web.global.resilience.DownstreamServiceNames;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.github.resilience4j.springboot3.circuitbreaker.autoconfigure.CircuitBreakerAutoConfiguration;
+import io.github.resilience4j.springboot3.timelimiter.autoconfigure.TimeLimiterAutoConfiguration;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import io.micrometer.tracing.Tracer;
@@ -31,6 +35,7 @@ import org.springframework.boot.autoconfigure.http.HttpMessageConvertersAutoConf
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cloud.circuitbreaker.resilience4j.Resilience4JAutoConfiguration;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.cloud.openfeign.FeignAutoConfiguration;
 import org.springframework.context.annotation.Configuration;
@@ -41,6 +46,7 @@ import org.springframework.test.context.DynamicPropertySource;
 /**
  * feign-micrometer가 Feign 호출에 observation을 걸어, 요청 처리 중인 trace를 traceparent 헤더로 하위 서비스에 넘기는지 확인한다.
  * 샘플링은 logging.yml과 같은 0이다. 하위 서비스는 이 헤더로 같은 traceId를 이어 받는다.
+ * 호출은 Spring Cloud CircuitBreaker를 거친다(요청 스레드에서 실행되므로 추적 컨텍스트가 그대로 이어진다).
  */
 // @SpringBootTest는 기본으로 tracing을 끈다(전파 헤더가 비는 Propagator). 추적 동작을 보려면 다시 켠다
 @AutoConfigureObservability(metrics = false)
@@ -64,10 +70,12 @@ class FeignTracingPropagationTest {
         OpenTelemetryAutoConfiguration.class,
         OpenTelemetryTracingAutoConfiguration.class,
         FeignAutoConfiguration.class,
-        CircuitBreakerAutoConfiguration.class
+        CircuitBreakerAutoConfiguration.class,
+        TimeLimiterAutoConfiguration.class,
+        Resilience4JAutoConfiguration.class
     })
     @EnableFeignClients(clients = MemberClient.class)
-    @Import({MemberClientAdapter.class, DownstreamCallExecutor.class, MemberNicknameCache.class})
+    @Import({MemberClientAdapter.class, DownstreamCircuitBreakerConfig.class, MemberNicknameCache.class})
     static class FeignTracingTestConfig {}
 
     @DynamicPropertySource
@@ -84,6 +92,9 @@ class FeignTracingPropagationTest {
     @Autowired
     private Tracer tracer;
 
+    @Autowired
+    private CircuitBreakerRegistry circuitBreakerRegistry;
+
     @AfterAll
     static void stopWireMock() {
         WIRE_MOCK.stop();
@@ -98,6 +109,10 @@ class FeignTracingPropagationTest {
                                 okJson(
                                         "{\"success\":true,\"code\":\"COMMON200\",\"message\":\"OK\",\"result\":{\"memberId\":1,\"nickname\":\"여행자\"}}")));
         AtomicReference<String> traceId = new AtomicReference<>();
+        CircuitBreaker.Metrics memberCircuit = circuitBreakerRegistry
+                .circuitBreaker(DownstreamServiceNames.MEMBER)
+                .getMetrics();
+        int callsBefore = memberCircuit.getNumberOfBufferedCalls();
 
         // 서블릿 요청 observation(ServerHttpObservationFilter)이 열려 있는 상황
         Observation.createNotStarted("http.server.requests", observationRegistry)
@@ -109,5 +124,7 @@ class FeignTracingPropagationTest {
         assertThat(traceId.get()).isNotBlank();
         WIRE_MOCK.verify(getRequestedFor(urlPathEqualTo("/v1/members/1"))
                 .withHeader("traceparent", matching("00-" + traceId.get() + "-[0-9a-f]{16}-0[01]")));
+        // 호출이 member-service 서킷을 거쳤다
+        assertThat(memberCircuit.getNumberOfBufferedCalls()).isEqualTo(callsBefore + 1);
     }
 }

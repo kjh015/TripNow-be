@@ -4,13 +4,14 @@ import com.traveler.common.core.response.ApiResponse;
 import com.traveler.web.domain.member.client.dto.request.MemberClientRequest;
 import com.traveler.web.domain.member.client.dto.response.MemberClientResponse;
 import com.traveler.web.global.feign.config.FeignClientConfig;
+import com.traveler.web.global.resilience.DownstreamServiceNames;
 import java.util.List;
 import java.util.Set;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
 @FeignClient(
-        name = "member-service",
+        name = DownstreamServiceNames.MEMBER,
         contextId = "MemberClient",
         path = "/v1/members",
         configuration = FeignClientConfig.class)
