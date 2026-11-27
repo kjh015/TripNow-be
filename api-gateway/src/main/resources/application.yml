@@ -1,7 +1,7 @@
 server:
   port: 8000
 
-# actuator를 관리 포트로 분리한다. ALB 대상 그룹에는 서비스 포트(8000)만 등록되어 외부 요청이 actuator에 닿지 않는다 (작업기록 N89)
+# actuator를 관리 포트로 분리한다. ALB 대상 그룹에는 서비스 포트(8000)만 등록되어 외부 요청이 actuator에 닿지 않는다
 management:
   server:
     port: 8090
