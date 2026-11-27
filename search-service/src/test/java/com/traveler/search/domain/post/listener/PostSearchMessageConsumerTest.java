@@ -65,13 +65,57 @@ class PostSearchMessageConsumerTest {
     }
 
     @Test
+    @DisplayName("post-service가 보낸 버전 있는 CREATED·UPDATED·DELETED의 버전과 시각을 읽는다")
+    void versionedMessages() {
+        consumer.consume(
+                """
+                {"postId":10,"memberId":1,"title":"t","content":"c","category":"FOOD","region":"SEOUL",
+                 "travelPlace":"p","address":"a","createdAt":"2026-10-01T00:00:00.123456Z","images":[],"version":0}
+                """,
+                "CREATED",
+                "10",
+                "event-v1",
+                ack);
+        consumer.consume(
+                """
+                {"postId":10,"memberId":1,"title":"t2","content":"c","category":"FOOD","region":"SEOUL",
+                 "travelPlace":"p","address":"a","createdAt":"2026-10-01T00:00:00.123456Z",
+                 "updatedAt":"2026-10-02T00:00:00.123456Z","images":[{"imageKey":"k","sortOrder":1}],"version":1}
+                """,
+                "UPDATED",
+                "10",
+                "event-v2",
+                ack);
+        consumer.consume(
+                "{\"postId\":10,\"version\":2,\"deletedAt\":\"2026-10-03T00:00:00.123456Z\"}",
+                "DELETED",
+                "10",
+                "event-v3",
+                ack);
+
+        ArgumentCaptor<PostSearchMessage.CreatedDTO> created =
+                ArgumentCaptor.forClass(PostSearchMessage.CreatedDTO.class);
+        verify(commandService).createDocument(created.capture());
+        assertThat(created.getValue().version()).isZero();
+        ArgumentCaptor<PostSearchMessage.UpdatedDTO> updated =
+                ArgumentCaptor.forClass(PostSearchMessage.UpdatedDTO.class);
+        verify(commandService).updateDocument(updated.capture());
+        assertThat(updated.getValue().version()).isEqualTo(1L);
+        assertThat(updated.getValue().memberId()).isEqualTo(1L);
+        assertThat(updated.getValue().createdAt()).isEqualTo(Instant.parse("2026-10-01T00:00:00.123456Z"));
+        verify(commandService)
+                .deleteDocument(
+                        new PostSearchMessage.DeletedDTO(10L, 2L, Instant.parse("2026-10-03T00:00:00.123456Z")));
+    }
+
+    @Test
     @DisplayName("UPDATED는 부분 갱신으로 처리한다")
     void updated() {
         consumer.consume("{\"postId\":10,\"title\":\"새 제목\"}", "UPDATED", "10", "event-2", ack);
 
         verify(commandService)
-                .updateDocument(
-                        new PostSearchMessage.UpdatedDTO(10L, "새 제목", null, null, null, null, null, null, null));
+                .updateDocument(new PostSearchMessage.UpdatedDTO(
+                        10L, null, "새 제목", null, null, null, null, null, null, null, null, null));
         verify(ack).acknowledge();
     }
 
@@ -80,7 +124,7 @@ class PostSearchMessageConsumerTest {
     void deleted() {
         consumer.consume("{\"postId\":10}", "DELETED", "10", "event-3", ack);
 
-        verify(commandService).deleteDocument(new PostSearchMessage.DeletedDTO(10L));
+        verify(commandService).deleteDocument(new PostSearchMessage.DeletedDTO(10L, null, null));
         verify(ack).acknowledge();
     }
 

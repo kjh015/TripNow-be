@@ -60,8 +60,10 @@ public class PostSearchQueryService {
     }
 
     public PostSearchResponse.DetailDTO getPostDetail(Long postId) {
+        // 삭제 표시(tombstone) 문서는 없는 글로 본다
         PostDocument post = postDocumentRepository
                 .findById(postId)
+                .filter(doc -> !doc.isTombstone())
                 .orElseThrow(() -> new SearchServiceException(SearchServiceErrorCode.POST_NOT_FOUND));
 
         return postDocumentMapper.toDetailDTO(post);

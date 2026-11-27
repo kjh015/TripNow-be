@@ -33,8 +33,8 @@ public class OutboxStatusManager {
     }
 
     @Transactional // 짧은 트랜잭션: FOR UPDATE 조회 + retryCount 증가 후 커밋 → 락 즉시 해제
-    public List<Outbox> claimRetryableMessages(Instant threshold, int maxRetry, Pageable pageable) {
-        Slice<Outbox> slice = outboxRepository.findRetryableMessages(threshold, maxRetry, pageable);
+    public List<Outbox> claimRetryableMessages(Instant initThreshold, int maxRetry, Instant now, Pageable pageable) {
+        Slice<Outbox> slice = outboxRepository.findRetryableMessages(initThreshold, maxRetry, now, pageable);
         List<Outbox> content = slice.getContent();
         content.forEach(Outbox::incrementRetryCount); // 같은 트랜잭션 안에서 dirty checking → 커밋 시 UPDATE
         return content;

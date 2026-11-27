@@ -2,6 +2,7 @@ package com.traveler.search.domain.post.document;
 
 import com.traveler.search.domain.post.document.embedded.PostImage;
 import com.traveler.search.global.document.BaseDocument;
+import java.time.Instant;
 import java.util.List;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -32,6 +33,9 @@ public class PostDocument extends BaseDocument {
         public static final String POPULARITY_SCORE = "popularityScore";
         public static final String POPULARITY_SCORE_VALUE = "popularityScoreValue";
         public static final String IMAGES = "images";
+        public static final String POST_VERSION = "postVersion";
+        public static final String DELETED = "deleted";
+        public static final String DELETED_AT = "deletedAt";
     }
 
     @Field(type = FieldType.Long)
@@ -90,4 +94,24 @@ public class PostDocument extends BaseDocument {
 
     @Field(type = FieldType.Nested)
     private List<PostImage> images;
+
+    // post-service의 Post.contentVersion을 기준으로 반영된 본문 버전.
+    // 현재 버전 이하의 본문·삭제 이벤트는 무시한다.
+    // 버전 도입 이전에 색인된 문서는 버전이 null이다.
+    @Field(type = FieldType.Long)
+    private Long postVersion;
+
+    // 삭제 여부를 나타내는 tombstone. 삭제 이벤트 수신 시 문서를 실제로 삭제하지 않고 deleted=true로 표시한다.
+    // 이를 통해 뒤늦게 도착한 이전 버전의 생성 이벤트로 삭제된 게시글이 복구되는 것을 방지한다.
+    // 모든 조회에서 deleted=true인 문서를 제외한다. must_not 조건을 사용해 deleted 필드가 없는 기존 문서도 조회되도록 한다.
+    // 삭제 후 7일이 지나면 정리 스케줄러가 문서를 실제로 삭제한다.
+    @Field(type = FieldType.Boolean)
+    private Boolean deleted;
+
+    @Field(type = FieldType.Date, format = DateFormat.strict_date_optional_time_nanos)
+    private Instant deletedAt;
+
+    public boolean isTombstone() {
+        return Boolean.TRUE.equals(deleted);
+    }
 }

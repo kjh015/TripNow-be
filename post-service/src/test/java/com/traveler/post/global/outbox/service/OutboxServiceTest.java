@@ -61,7 +61,8 @@ class OutboxServiceTest {
     @Test
     @DisplayName("즉시 발행 경로는 aggregateId를 키로, eventId를 헤더로 싣는다")
     void publishSendsKeyAndEventId() {
-        OutboxEvent event = OutboxEvent.of(POST_ID, PostEventType.DELETED, TOPIC, new PostMessage.DeletedDTO(POST_ID));
+        OutboxEvent event =
+                OutboxEvent.of(POST_ID, PostEventType.DELETED, TOPIC, new PostMessage.DeletedDTO(POST_ID, 1L, null));
 
         outboxService.publish(event);
 
@@ -75,7 +76,8 @@ class OutboxServiceTest {
     @Test
     @DisplayName("재시도 경로도 저장된 aggregateId·eventId로 같은 키와 헤더를 싣는다")
     void retrySendsSameKeyAndEventId() {
-        OutboxEvent event = OutboxEvent.of(POST_ID, PostEventType.DELETED, TOPIC, new PostMessage.DeletedDTO(POST_ID));
+        OutboxEvent event =
+                OutboxEvent.of(POST_ID, PostEventType.DELETED, TOPIC, new PostMessage.DeletedDTO(POST_ID, 1L, null));
         Outbox outbox = Outbox.builder()
                 .eventId(event.eventId())
                 .aggregateType(event.aggregateType())
@@ -84,7 +86,7 @@ class OutboxServiceTest {
                 .topic(event.topic())
                 .payload("{\"postId\":10}")
                 .build();
-        given(outboxStatusManager.claimRetryableMessages(any(), anyInt(), any()))
+        given(outboxStatusManager.claimRetryableMessages(any(), anyInt(), any(), any()))
                 .willReturn(List.of(outbox));
 
         outboxService.retry();
@@ -103,7 +105,8 @@ class OutboxServiceTest {
     @Test
     @DisplayName("aggregateId가 없으면 키 없이 발행한다")
     void publishWithoutAggregateIdHasNullKey() {
-        OutboxEvent event = OutboxEvent.of(null, PostEventType.DELETED, TOPIC, new PostMessage.DeletedDTO(null));
+        OutboxEvent event =
+                OutboxEvent.of(null, PostEventType.DELETED, TOPIC, new PostMessage.DeletedDTO(null, null, null));
 
         outboxService.publish(event);
 

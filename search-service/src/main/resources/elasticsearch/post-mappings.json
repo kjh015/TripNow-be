@@ -34,6 +34,9 @@
     "popularityScore": {"type": "rank_feature"},
     "popularityScoreValue": {"type": "double"},
     "statSyncedAt": {"type": "long"},
+    "postVersion": {"type": "long"},
+    "deleted": {"type": "boolean"},
+    "deletedAt": { "type": "date", "format": "strict_date_optional_time_nanos||strict_date_optional_time||epoch_millis" },
     "images": {
       "type": "nested",
       "properties": {

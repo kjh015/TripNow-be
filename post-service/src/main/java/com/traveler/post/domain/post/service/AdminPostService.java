@@ -60,7 +60,7 @@ public class AdminPostService {
 
     public AdminPostResponse.DeleteDTO deletePost(Long postId) {
         Post post = postRepository
-                .findByIdForAdmin(postId)
+                .findByIdForAdminWithLock(postId)
                 .orElseThrow(() -> new PostServiceException(PostServiceErrorCode.POST_NOT_FOUND));
 
         if (post.isDeleted()) {
@@ -76,13 +76,14 @@ public class AdminPostService {
 
     public AdminPostResponse.RestoreDTO restorePost(Long postId) {
         Post post = postRepository
-                .findByIdForAdmin(postId)
+                .findByIdForAdminWithLock(postId)
                 .orElseThrow(() -> new PostServiceException(PostServiceErrorCode.POST_NOT_FOUND));
 
         post.restore();
         auditLogger.log(RESTORE_POST, postId);
 
-        // 삭제 시 검색 문서가 제거되므로 다시 색인(Event.Restore). Stat 통계는 스케줄러가 보낸다(Event.StatUpdate).
+        // 삭제 때 검색 문서가 삭제 표시(tombstone)되므로 새 버전의 생성 메시지로 다시 색인한다(Event.Restore).
+        // 통계는 스케줄러가 보낸다(Event.StatUpdate).
         eventPublisher.publishEvent(postMapper.toRestoredEvent(post));
 
         return adminPostMapper.toRestoreDTO(post);
@@ -90,11 +91,13 @@ public class AdminPostService {
 
     public AdminPostResponse.PermanentDeleteDTO permanentlyDeletePost(Long postId) {
         Post post = postRepository
-                .findByIdForAdmin(postId)
+                .findByIdForAdminWithLock(postId)
                 .orElseThrow(() -> new PostServiceException(PostServiceErrorCode.POST_NOT_FOUND));
 
-        // 아직 소프트 삭제되지 않은 게시글은 검색 문서가 살아있으므로 삭제 이벤트 발행
+        // 아직 소프트 삭제되지 않은 게시글은 검색 문서가 살아있으므로 삭제 이벤트 발행.
+        // 먼저 소프트 삭제해 본문 버전을 올린다. 검색 서버가 직전 버전 이하의 이벤트로 판단해 버리지 않게 한다
         if (!post.isDeleted()) {
+            post.delete();
             eventPublisher.publishEvent(postMapper.toDeletedEvent(post));
         }
 

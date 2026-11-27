@@ -8,6 +8,7 @@ import com.traveler.post.domain.post.dto.result.PostStatsSummary;
 import com.traveler.post.domain.post.entity.Post;
 import com.traveler.post.domain.post.entity.PostImage;
 import com.traveler.post.domain.post.entity.TravelPlace;
+import java.util.Comparator;
 import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -19,14 +20,38 @@ public interface PostMapper {
     @Mapping(target = "images", ignore = true)
     Post toCreateEntity(PostRequest.CreateDTO dto, TravelPlace travelPlace, Long memberId);
 
+    // 작성·수정 응답은 게시글 전체. version은 본문 버전(contentVersion)
     @Mapping(source = "id", target = "postId")
+    @Mapping(source = "travelPlace.name", target = "travelPlace")
+    @Mapping(source = "travelPlace.category", target = "category")
+    @Mapping(source = "travelPlace.region", target = "region")
+    @Mapping(source = "travelPlace.address", target = "address")
+    @Mapping(source = "contentVersion", target = "version")
+    @Mapping(target = "images", expression = "java(toSortedImageInfos(post.getImages()))")
     PostResponse.CreateDTO toCreateDTO(Post post);
 
     @Mapping(source = "id", target = "postId")
+    @Mapping(source = "travelPlace.name", target = "travelPlace")
+    @Mapping(source = "travelPlace.category", target = "category")
+    @Mapping(source = "travelPlace.region", target = "region")
+    @Mapping(source = "travelPlace.address", target = "address")
+    @Mapping(source = "contentVersion", target = "version")
+    @Mapping(target = "images", expression = "java(toSortedImageInfos(post.getImages()))")
     PostResponse.UpdateDTO toUpdateDTO(Post post);
 
     @Mapping(source = "id", target = "postId")
+    @Mapping(source = "contentVersion", target = "version")
     PostResponse.DeleteDTO toDeleteDTO(Post post);
+
+    PostResponse.ImageInfo toResponseImageInfo(PostImage postImage);
+
+    default List<PostResponse.ImageInfo> toSortedImageInfos(List<PostImage> images) {
+        if (images == null) return List.of();
+        return images.stream()
+                .sorted(Comparator.comparingInt(PostImage::getSortOrder))
+                .map(this::toResponseImageInfo)
+                .toList();
+    }
 
     // Kafka Message
     @Mapping(source = "id", target = "postId")
@@ -34,6 +59,7 @@ public interface PostMapper {
     @Mapping(source = "travelPlace.category", target = "category")
     @Mapping(source = "travelPlace.region", target = "region")
     @Mapping(source = "travelPlace.address", target = "address")
+    @Mapping(source = "contentVersion", target = "version")
     PostMessage.CreatedDTO toCreatedMsgDTO(Post post);
 
     PostMessage.ImageInfo toImageInfo(PostImage postImage);
@@ -43,9 +69,11 @@ public interface PostMapper {
     @Mapping(source = "travelPlace.category", target = "category")
     @Mapping(source = "travelPlace.region", target = "region")
     @Mapping(source = "travelPlace.address", target = "address")
+    @Mapping(source = "contentVersion", target = "version")
     PostMessage.UpdatedDTO toUpdatedMsgDTO(Post post);
 
     @Mapping(source = "id", target = "postId")
+    @Mapping(source = "contentVersion", target = "version")
     PostMessage.DeletedDTO toDeletedMsgDTO(Post post);
 
     default PostMessage.ImagesDeleteDTO toDeleteImagesMsgDTO(Long postId, List<String> imageKeys) {
