@@ -85,7 +85,7 @@ class PostServiceTest {
     void updateAttachesCopiedKey() {
         Post post = post(MEMBER_ID);
         post.setImages(List.of(MEMBER_1_KEY));
-        given(postRepository.findByIdWithDetails(POST_ID)).willReturn(Optional.of(post));
+        given(postRepository.findByIdWithDetailsForUpdate(POST_ID)).willReturn(Optional.of(post));
 
         postService.updatePost(
                 POST_ID, MEMBER_ID, updateDto(), List.of(MEMBER_1_KEY, MEMBER_1_KEY_2), List.of(MEMBER_1_KEY_2));
@@ -99,7 +99,7 @@ class PostServiceTest {
     void updateRemovingImagePublishesDeleteEvent() {
         Post post = post(MEMBER_ID);
         post.setImages(List.of(MEMBER_1_KEY, MEMBER_1_KEY_2));
-        given(postRepository.findByIdWithDetails(POST_ID)).willReturn(Optional.of(post));
+        given(postRepository.findByIdWithDetailsForUpdate(POST_ID)).willReturn(Optional.of(post));
         PostEvent.ImagesDelete event = new PostEvent.ImagesDelete(null);
         given(postMapper.toImageDeleteEvent(POST_ID, List.of(MEMBER_1_KEY_2))).willReturn(event);
 
@@ -113,7 +113,7 @@ class PostServiceTest {
     void updateWithoutImagesKeepsImages() {
         Post post = post(MEMBER_ID);
         post.setImages(List.of(MEMBER_1_KEY));
-        given(postRepository.findByIdWithDetails(POST_ID)).willReturn(Optional.of(post));
+        given(postRepository.findByIdWithDetailsForUpdate(POST_ID)).willReturn(Optional.of(post));
 
         postService.updatePost(POST_ID, MEMBER_ID, updateDto(), null, List.of());
 
@@ -124,7 +124,7 @@ class PostServiceTest {
     @DisplayName("수정: 확정 후 트랜잭션 시작 전에 이미지가 바뀌어 확정하지 않은 키가 생기면 거부된다")
     void updateRejectsKeyChangedAfterConfirm() {
         Post inTransaction = post(MEMBER_ID);
-        given(postRepository.findByIdWithDetails(POST_ID)).willReturn(Optional.of(inTransaction));
+        given(postRepository.findByIdWithDetailsForUpdate(POST_ID)).willReturn(Optional.of(inTransaction));
 
         assertThatThrownBy(
                         () -> postService.updatePost(POST_ID, MEMBER_ID, updateDto(), List.of(MEMBER_1_KEY), List.of()))

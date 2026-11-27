@@ -63,6 +63,14 @@ public class Post extends BaseEntity {
 
     private Instant deletedAt;
 
+    // 본문 변경 버전. 본문 수정·삭제·복구 시마다 1 증가시키며, 이벤트와 쓰기 응답에 포함한다.
+    // 검색 서비스는 현재 버전 이하의 이벤트를 무시하고, 클라이언트는 조회한 버전이 이 버전에 도달했는지로 반영 여부를 판단한다.
+    // 조회수·좋아요·댓글 등 통계 변경은 포함하지 않으며, statSyncedAt으로 별도 동기화 상태를 관리한다.
+    // JPA @Version은 TravelPlace나 이미지만 변경되는 경우 증가하지 않고, flush 전까지 변경 값이 반영되지 않으므로 사용하지 않는다.
+    @Column(nullable = false)
+    @Builder.Default
+    private long contentVersion = 0L;
+
     public void addPostImage(String imageKey, int sortOrder) {
         PostImage postImage = PostImage.builder()
                 .imageKey(imageKey)
@@ -76,6 +84,7 @@ public class Post extends BaseEntity {
         validateNotDeleted();
         this.title = title;
         this.content = content;
+        increaseContentVersion();
     }
 
     public void delete() {
@@ -84,6 +93,7 @@ public class Post extends BaseEntity {
         }
         this.isDeleted = true;
         this.deletedAt = Instant.now();
+        increaseContentVersion();
     }
 
     public void restore() {
@@ -92,6 +102,11 @@ public class Post extends BaseEntity {
         }
         this.isDeleted = false;
         this.deletedAt = null;
+        increaseContentVersion();
+    }
+
+    private void increaseContentVersion() {
+        this.contentVersion++;
     }
 
     public List<String> setImages(List<String> newUrls) {

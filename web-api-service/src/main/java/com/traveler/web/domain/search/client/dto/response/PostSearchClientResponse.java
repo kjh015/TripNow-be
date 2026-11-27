@@ -22,7 +22,8 @@ public final class PostSearchClientResponse {
             Long likeCount,
             Long commentCount,
             Double popularityScore,
-            Instant updatedAt) {}
+            Instant updatedAt,
+            Long version) {}
 
     public record DetailDTO(
             Long postId,
@@ -38,7 +39,8 @@ public final class PostSearchClientResponse {
             Long likeCount,
             Long commentCount,
             Instant updatedAt,
-            List<ImageInfo> images) {}
+            List<ImageInfo> images,
+            Long version) {}
 
     public record AutocompleteDTO(List<String> titles) {}
 
@@ -53,5 +55,6 @@ public final class PostSearchClientResponse {
             Long likeCount,
             Long commentCount,
             Double popularityScore,
-            Instant updatedAt) {}
+            Instant updatedAt,
+            Long version) {}
 }

@@ -5,6 +5,9 @@ plugins {
     id 'com.diffplug.spotless' version '6.25.0' apply false
 }
 
+// Spring Boot 3.4.5가 정하는 Testcontainers 1.20.6은 Docker API 1.32로 요청해, API 1.44 미만을 거절하는 Docker 29 엔진(GitHub 러너)에 연결하지 못한다
+ext['testcontainers.version'] = '1.21.4'
+
 allprojects {
     group = 'module'
     version = '0.0.1-SNAPSHOT'

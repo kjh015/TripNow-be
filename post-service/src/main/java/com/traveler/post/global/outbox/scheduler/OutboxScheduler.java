@@ -12,7 +12,8 @@ import org.springframework.stereotype.Component;
 public class OutboxScheduler {
     private final OutboxService outboxService;
 
-    @Scheduled(fixedDelay = 180000) // 3분마다 실행
+    // 실패 행은 nextRetryAt(1초부터 두 배씩, 최대 60초)이 지나야 대상이 되므로 짧게 돈다
+    @Scheduled(fixedDelay = 1000)
     public void retryFailedMessages() {
         try {
             outboxService.retry();

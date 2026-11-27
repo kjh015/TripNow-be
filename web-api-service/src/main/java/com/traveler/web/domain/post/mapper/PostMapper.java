@@ -7,17 +7,24 @@ import com.traveler.web.domain.post.dto.request.PostRequest;
 import com.traveler.web.domain.post.dto.response.AdminPostResponse;
 import com.traveler.web.domain.post.dto.response.PostResponse;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface PostMapper {
     PostClientRequest.CreateDTO toCreateClientRequest(PostRequest.CreateDTO dto);
 
-    PostResponse.CreateDTO toCreateResponse(PostClientResponse.CreateDTO result);
+    @Mapping(source = "memberNickname", target = "memberNickname")
+    @Mapping(target = "starAvg", constant = "0.0")
+    @Mapping(target = "viewCount", constant = "0L")
+    @Mapping(target = "likeCount", constant = "0L")
+    @Mapping(target = "commentCount", constant = "0L")
+    PostResponse.CreateDTO toCreateResponse(PostClientResponse.CreateDTO result, String memberNickname);
 
     PostClientRequest.UpdateDTO toUpdateClientRequest(PostRequest.UpdateDTO dto);
 
-    PostResponse.UpdateDTO toUpdateResponse(PostClientResponse.UpdateDTO result);
+    @Mapping(source = "memberNickname", target = "memberNickname")
+    PostResponse.UpdateDTO toUpdateResponse(PostClientResponse.UpdateDTO result, String memberNickname);
 
     PostResponse.DeleteDTO toDeleteResponse(PostClientResponse.DeleteDTO result);
 

@@ -61,15 +61,22 @@ public class PostService {
     /** 이미지 확정 전에 게시글 소유자를 확인하고 지금 붙어 있는 키를 돌려준다. */
     @Transactional(readOnly = true)
     public List<String> getOwnedImageKeys(Long postId, Long memberId) {
-        return getOwnedPost(postId, memberId).getImages().stream()
-                .map(PostImage::getImageKey)
-                .toList();
+        Post post = postRepository
+                .findByIdWithDetails(postId)
+                .orElseThrow(() -> new PostServiceException(PostServiceErrorCode.POST_NOT_FOUND));
+        validateOwner(post, memberId);
+
+        return post.getImages().stream().map(PostImage::getImageKey).toList();
     }
 
     /** imageKeys는 PostFacade가 트랜잭션 밖에서 확정한 키이고, copiedKeys는 그중 이번 요청에서 복사한 키다. */
     public PostResponse.UpdateDTO updatePost(
             Long postId, Long memberId, PostRequest.UpdateDTO dto, List<String> imageKeys, List<String> copiedKeys) {
-        Post post = getOwnedPost(postId, memberId);
+        // 본문 버전을 올리므로 잠가서 읽는다(같은 글의 동시 수정이 같은 버전을 만들지 않게)
+        Post post = postRepository
+                .findByIdWithDetailsForUpdate(postId)
+                .orElseThrow(() -> new PostServiceException(PostServiceErrorCode.POST_NOT_FOUND));
+        validateOwner(post, memberId);
 
         post.getTravelPlace().update(dto.category(), dto.region(), dto.travelPlace(), dto.address());
         post.update(dto.title(), dto.content());
@@ -87,30 +94,25 @@ public class PostService {
             }
         }
 
+        // updatedAt(JPA Auditing)은 flush 때 채워진다. 이벤트와 응답에 이번 수정 시각을 싣도록 먼저 flush한다
+        postRepository.flush();
+
         eventPublisher.publishEvent(postMapper.toUpdatedEvent(post));
 
         return postMapper.toUpdateDTO(post);
     }
 
-    private Post getOwnedPost(Long postId, Long memberId) {
-        Post post = postRepository
-                .findByIdWithDetails(postId)
-                .orElseThrow(() -> new PostServiceException(PostServiceErrorCode.POST_NOT_FOUND));
-
+    private static void validateOwner(Post post, Long memberId) {
         if (!post.getMemberId().equals(memberId)) {
             throw new PostServiceException(ErrorCode.FORBIDDEN);
         }
-        return post;
     }
 
     public PostResponse.DeleteDTO deletePost(Long postId, Long memberId) {
         Post post = postRepository
-                .findById(postId)
+                .findByIdForUpdate(postId)
                 .orElseThrow(() -> new PostServiceException(PostServiceErrorCode.POST_NOT_FOUND));
-
-        if (!post.getMemberId().equals(memberId)) {
-            throw new PostServiceException(ErrorCode.FORBIDDEN);
-        }
+        validateOwner(post, memberId);
 
         post.delete();
         eventPublisher.publishEvent(postMapper.toDeletedEvent(post));
@@ -127,7 +129,7 @@ public class PostService {
      * IMAGE_BATCH_DELETED로 S3에서 지운다.
      */
     public int deleteByMember(Long memberId, int limit) {
-        List<Post> posts = postRepository.findByMemberIdOrderByIdAsc(memberId, Limit.of(limit));
+        List<Post> posts = postRepository.findForUpdateByMemberIdOrderByIdAsc(memberId, Limit.of(limit));
         for (Post post : posts) {
             post.delete();
             eventPublisher.publishEvent(postMapper.toDeletedEvent(post));

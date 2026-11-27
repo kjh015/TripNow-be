@@ -8,6 +8,7 @@ import com.traveler.post.global.outbox.entity.Outbox;
 import com.traveler.post.global.outbox.event.OutboxEvent;
 import com.traveler.post.global.outbox.mapper.OutboxMapper;
 import com.traveler.post.global.outbox.repository.OutboxRepository;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -30,7 +31,14 @@ public class OutboxService {
     private final OutboxStatusManager outboxStatusManager;
     private final OutboxRelay outboxRelay;
 
-    private static final int MAX_RETRY_COUNT = 5;
+    // 최대 재시도 횟수.
+    // 재시도 간격은 1초부터 두 배씩 증가하며 최대 60초로 제한한다(Outbox.retryDelay).
+    // 최대 20회 재시도 시 대기 시간의 합은 약 15분이다.
+    static final int MAX_RETRY_COUNT = 20;
+    // INIT 상태가 일정 시간 지속되면 재시도 대상으로 판단하는 기준.
+    // 프로듀서의 delivery.timeout.ms 기본값인 120초 이내에 비동기 전송 결과(SENT/FAILED)가 도착해야 한다.
+    // 여기에 30초의 여유를 더해 150초가 지난 INIT을 미처리 행으로 간주한다.
+    static final Duration INIT_RETRY_THRESHOLD = Duration.ofSeconds(150);
     private static final int BATCH_SIZE_RETRY = 100;
     private static final int BATCH_SIZE_DELETE = 500;
 
@@ -50,12 +58,14 @@ public class OutboxService {
     }
 
     public void retry() {
-        Instant threshold = Instant.now().minus(5, ChronoUnit.MINUTES);
+        Instant now = Instant.now();
+        Instant initThreshold = now.minus(INIT_RETRY_THRESHOLD);
         Pageable pageable = PageRequest.of(0, BATCH_SIZE_RETRY);
 
         while (true) {
             // 1) 짧은 트랜잭션에서 대상 선점(락) + retryCount 증가 → 커밋되며 락 해제
-            List<Outbox> claimed = outboxStatusManager.claimRetryableMessages(threshold, MAX_RETRY_COUNT, pageable);
+            List<Outbox> claimed =
+                    outboxStatusManager.claimRetryableMessages(initThreshold, MAX_RETRY_COUNT, now, pageable);
 
             if (claimed.isEmpty()) break;
 

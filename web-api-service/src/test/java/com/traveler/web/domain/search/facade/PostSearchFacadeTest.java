@@ -57,6 +57,10 @@ class PostSearchFacadeTest {
                 .extracting(PostSearchResponse.ListDTO::postId, PostSearchResponse.ListDTO::memberNickname)
                 .containsExactly(tuple(1L, "여행자"), tuple(2L, MemberClientAdapter.DEFAULT_NICKNAME), tuple(3L, "여행자"));
         assertThat(result.totalElements()).isEqualTo(3);
+        // 게시글 본문 버전을 그대로 넘긴다(화면이 방금 쓴 내용의 반영 여부를 판단한다)
+        assertThat(result.content())
+                .extracting(PostSearchResponse.ListDTO::version)
+                .containsExactly(101L, 102L, 103L);
     }
 
     @Test
@@ -91,7 +95,7 @@ class PostSearchFacadeTest {
 
     private static PostSearchClientResponse.SearchDTO post(Long postId, Long memberId) {
         return new PostSearchClientResponse.SearchDTO(
-                postId, memberId, "제목" + postId, "FOOD", "SEOUL", 4.0, 1L, 1L, 1L, 1.0, null);
+                postId, memberId, "제목" + postId, "FOOD", "SEOUL", 4.0, 1L, 1L, 1L, 1.0, null, postId + 100);
     }
 
     @SafeVarargs

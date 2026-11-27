@@ -15,10 +15,21 @@ public interface PostDocumentMapper {
     @Mapping(source = "titleChosung", target = "titleChosung")
     PostDocument toCreateDocument(PostSearchMessage.CreatedDTO msg, String titleChosung);
 
+    @Mapping(source = "msg.postId", target = "postId")
+    @Mapping(source = "titleChosung", target = "titleChosung")
+    @Mapping(target = "updatedAt", ignore = true)
+    PostSearchMessage.ContentSnapshot toContentSnapshot(PostSearchMessage.CreatedDTO msg, String titleChosung);
+
+    @Mapping(source = "msg.postId", target = "postId")
+    @Mapping(source = "titleChosung", target = "titleChosung")
+    PostSearchMessage.ContentSnapshot toContentSnapshot(PostSearchMessage.UpdatedDTO msg, String titleChosung);
+
     @Mapping(source = "id", target = "postId")
+    @Mapping(source = "postVersion", target = "version")
     PostSearchResponse.SearchDTO toSearchDTO(PostDocument doc);
 
     @Mapping(source = "id", target = "postId")
+    @Mapping(source = "postVersion", target = "version")
     PostSearchResponse.DetailDTO toDetailDTO(PostDocument doc);
 
     default PostSearchResponse.AutocompleteDTO toAutocompleteDTO(List<String> titles) {
@@ -32,6 +43,7 @@ public interface PostDocumentMapper {
     }
 
     @Mapping(source = "id", target = "postId")
+    @Mapping(source = "postVersion", target = "version")
     PostSearchResponse.MyDTO toMyDTO(PostDocument doc);
 
     default PostSearchMessage.StatUpdateDoc toStatUpdateDoc(PostSearchMessage.StatUpdatedDTO msg) {

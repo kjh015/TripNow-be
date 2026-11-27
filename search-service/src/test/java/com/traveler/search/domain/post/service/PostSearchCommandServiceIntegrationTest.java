@@ -9,6 +9,7 @@ import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import com.traveler.search.domain.post.document.PostDocument;
 import com.traveler.search.domain.post.dto.message.PostSearchMessage;
 import com.traveler.search.domain.post.repository.PostDocumentRepository;
+import com.traveler.search.global.exception.SearchServiceException;
 import com.traveler.search.global.util.HangulUtils;
 import com.traveler.search.testsupport.IntegrationTestSupport;
 import java.util.List;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.NestedExceptionUtils;
 
+/** 버전 없는 메시지(버전 도입 전 발행분)의 기존 경로와 통계 갱신. 버전 있는 메시지는 PostVersionedIndexingIntegrationTest */
 class PostSearchCommandServiceIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
@@ -26,8 +28,11 @@ class PostSearchCommandServiceIntegrationTest extends IntegrationTestSupport {
     @Autowired
     private PostDocumentRepository postDocumentRepository;
 
+    @Autowired
+    private PostSearchQueryService queryService;
+
     @Test
-    @DisplayName("생성 메시지로 문서를 만들고 초성 필드와 통계 기본값을 채운다")
+    @DisplayName("(버전 없는 메시지) 생성 메시지로 문서를 만들고 초성 필드와 통계 기본값을 채운다")
     void createDocument() {
         long postId = nextId();
 
@@ -42,7 +47,7 @@ class PostSearchCommandServiceIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("같은 생성 메시지를 두 번 받아도 문서는 하나이고 내용이 같다")
+    @DisplayName("(버전 없는 메시지) 같은 생성 메시지를 두 번 받아도 문서는 하나이고 내용이 같다")
     void createDocumentTwice() {
         long postId = nextId();
         long memberId = nextId();
@@ -57,13 +62,13 @@ class PostSearchCommandServiceIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("부분 갱신은 메시지에 담긴 필드만 바꾸고 나머지는 유지한다")
+    @DisplayName("(버전 없는 메시지) 부분 갱신은 메시지에 담긴 필드만 바꾸고 나머지는 유지한다")
     void updateDocumentPartially() {
         long postId = nextId();
         commandService.createDocument(created(postId, "원래 제목"));
 
         commandService.updateDocument(new PostSearchMessage.UpdatedDTO(
-                postId, "바뀐 제목", null, null, null, null, null, READABLE_TIMESTAMP, null));
+                postId, null, "바뀐 제목", null, null, null, null, null, null, READABLE_TIMESTAMP, null, null));
 
         PostDocument doc = postDocumentRepository.findById(postId).orElseThrow();
         assertThat(doc.getTitle()).isEqualTo("바뀐 제목");
@@ -110,30 +115,35 @@ class PostSearchCommandServiceIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("같은 삭제 메시지를 두 번 받아도 예외 없이 문서가 없는 상태로 끝난다")
+    @DisplayName("(버전 없는 메시지) 같은 삭제 메시지를 두 번 받아도 예외 없이 문서가 없는 상태로 끝난다")
     void deleteDocumentTwice() {
         long postId = nextId();
         commandService.createDocument(created(postId, "삭제"));
 
-        commandService.deleteDocument(new PostSearchMessage.DeletedDTO(postId));
-        commandService.deleteDocument(new PostSearchMessage.DeletedDTO(postId));
+        commandService.deleteDocument(new PostSearchMessage.DeletedDTO(postId, null, null));
+        commandService.deleteDocument(new PostSearchMessage.DeletedDTO(postId, null, null));
 
         assertThat(postDocumentRepository.findById(postId)).isEmpty();
     }
 
     @Test
-    @DisplayName("삭제 후 도착한 갱신·통계 이벤트는 404로 실패하고 문서를 되살리지 않는다")
+    @DisplayName("(버전 없는 메시지) 삭제 후 도착한 갱신 이벤트는 404로 실패하고, 통계 이벤트는 보이지 않는 자리 표시 문서만 만든다")
     void updateAfterDeleteFails() {
         long postId = nextId();
         commandService.createDocument(created(postId, "삭제 후 갱신"));
-        commandService.deleteDocument(new PostSearchMessage.DeletedDTO(postId));
+        commandService.deleteDocument(new PostSearchMessage.DeletedDTO(postId, null, null));
 
-        assertDocumentMissing(() -> commandService.updateDocument(
-                new PostSearchMessage.UpdatedDTO(postId, "늦게 온 갱신", null, null, null, null, null, null, null)));
-        assertDocumentMissing(() ->
-                commandService.updateStatistics(new PostSearchMessage.StatUpdatedDTO(postId, 1.0, 1L, 1L, 1L, 1_000L)));
-
+        assertDocumentMissing(() -> commandService.updateDocument(new PostSearchMessage.UpdatedDTO(
+                postId, null, "늦게 온 갱신", null, null, null, null, null, null, null, null, null)));
         assertThat(postDocumentRepository.findById(postId)).isEmpty();
+
+        commandService.updateStatistics(new PostSearchMessage.StatUpdatedDTO(postId, 1.0, 1L, 1L, 1L, 1_000L));
+
+        PostDocument placeholder = postDocumentRepository.findById(postId).orElseThrow();
+        assertThat(placeholder.isTombstone()).isTrue();
+        assertThat(placeholder.getPostVersion()).isEqualTo(-1L);
+        assertThat(placeholder.getTitle()).isNull();
+        assertThatThrownBy(() -> queryService.getPostDetail(postId)).isInstanceOf(SearchServiceException.class);
     }
 
     private static void assertDocumentMissing(ThrowingCallable call) {
@@ -159,6 +169,7 @@ class PostSearchCommandServiceIntegrationTest extends IntegrationTestSupport {
                 "황리단길",
                 "경상북도 경주시",
                 READABLE_TIMESTAMP,
-                List.of(new PostSearchMessage.ImageInfo("posts/" + memberId + "/a.png", 0)));
+                List.of(new PostSearchMessage.ImageInfo("posts/" + memberId + "/a.png", 0)),
+                null);
     }
 }

@@ -1,6 +1,7 @@
 package com.traveler.post.domain.post.repository;
 
 import com.traveler.post.domain.post.entity.Post;
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -18,8 +19,22 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             + "WHERE p.id = :postId ")
     Optional<Post> findByIdWithDetails(Long postId);
 
-    // 탈퇴 회원 정리. 소프트 삭제된 게시글은 @SQLRestriction으로 빠진다
-    List<Post> findByMemberIdOrderByIdAsc(Long memberId, Limit limit);
+    // 본문 버전(contentVersion)을 올리는 쓰기용. 같은 글의 동시 수정이 같은 버전을 만들지 않도록 행을 잠근다.
+    // 대기 한도는 연결의 innodb_lock_wait_timeout(3초, connection-init-sql)이다.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Post p "
+            + "LEFT JOIN FETCH p.travelPlace tp "
+            + "LEFT JOIN FETCH p.images im "
+            + "WHERE p.id = :postId ")
+    Optional<Post> findByIdWithDetailsForUpdate(@Param("postId") Long postId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Post p WHERE p.id = :postId")
+    Optional<Post> findByIdForUpdate(@Param("postId") Long postId);
+
+    // 탈퇴 회원 정리. 소프트 삭제된 게시글은 @SQLRestriction으로 빠진다. 본문 버전을 올리므로 잠근다
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    List<Post> findForUpdateByMemberIdOrderByIdAsc(Long memberId, Limit limit);
 
     @Query("SELECT pi.imageKey FROM PostImage pi WHERE pi.post.id IN :postIds")
     List<String> findImageKeysByPostIds(@Param("postIds") List<Long> postIds);
@@ -63,6 +78,8 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query(value = "SELECT * FROM post p WHERE p.id = :postId", nativeQuery = true)
     Optional<Post> findByIdForAdmin(@Param("postId") Long postId);
 
+    // 관리자 삭제·복구·영구 삭제(본문 버전을 올리는 경로)와 관리자 댓글 삭제·복구가 쓴다.
+    // 네이티브 쿼리라 @Lock을 쓸 수 없어 FOR UPDATE를 직접 적는다. 대기 한도는 innodb_lock_wait_timeout(3초)
     @Query(value = "SELECT * FROM post p WHERE p.id = :postId FOR UPDATE", nativeQuery = true)
     Optional<Post> findByIdForAdminWithLock(@Param("postId") Long postId);
 }
