@@ -9,7 +9,7 @@ public final class SearchFixture {
     /**
      * 부분 갱신 메시지에 넣을 시각.
      * 부분 갱신은 ES 클라이언트가 Instant를 그대로 직렬화하는데, Spring Data ES는 소수 6자리 형식만 다시 읽는다
-     * (소수 0·3·9자리는 조회 시 ConversionException, 작업기록 WP-C 추가 발견). 테스트에서는 읽을 수 있는 형식으로 고정한다.
+     * (소수 0·3·9자리는 조회 시 ConversionException). 테스트에서는 읽을 수 있는 형식으로 고정한다.
      */
     public static final Instant READABLE_TIMESTAMP = Instant.parse("2026-10-17T09:00:00.123456Z");
 

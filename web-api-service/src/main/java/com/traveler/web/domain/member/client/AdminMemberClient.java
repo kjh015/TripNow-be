@@ -6,6 +6,7 @@ import com.traveler.web.domain.member.client.dto.response.AdminMemberClientRespo
 import com.traveler.web.domain.member.enums.Provider;
 import com.traveler.web.domain.member.enums.RoleType;
 import com.traveler.web.global.feign.config.FeignClientConfig;
+import com.traveler.web.global.resilience.DownstreamServiceNames;
 import java.time.LocalDate;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.cloud.openfeign.SpringQueryMap;
@@ -18,7 +19,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @FeignClient(
-        name = "member-service",
+        name = DownstreamServiceNames.MEMBER,
         contextId = "AdminClient",
         path = "/v1/admin/members",
         configuration = FeignClientConfig.class)

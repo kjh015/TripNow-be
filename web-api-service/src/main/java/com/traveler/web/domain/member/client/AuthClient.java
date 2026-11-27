@@ -4,12 +4,13 @@ import com.traveler.common.core.response.ApiResponse;
 import com.traveler.web.domain.member.client.dto.request.AuthClientRequest;
 import com.traveler.web.domain.member.client.dto.response.AuthClientResponse;
 import com.traveler.web.global.feign.config.FeignClientConfig;
+import com.traveler.web.global.resilience.DownstreamServiceNames;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 @FeignClient(
-        name = "member-service",
+        name = DownstreamServiceNames.MEMBER,
         contextId = "AuthClient",
         path = "/v1/auth",
         configuration = FeignClientConfig.class)

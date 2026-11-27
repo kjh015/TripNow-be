@@ -12,7 +12,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * 라우트의 RateLimitFilter가 쓰는 정책 이름이 app.rate-limit.policies에 있는지 기동할 때 확인한다.
- * 필터 생성 때 실패하면 그 라우트만 빠진 채 기동되어, 쓰기 요청이 아래 라우트로 내려가 제한 없이 통과한다.
+ * 필터 생성(apply) 실패는 spring.cloud.gateway.fail-on-route-definition-error에 따라 다르게 드러난다.
+ * 기본값(true)이면 기동이 실패하고, false면 그 라우트만 빠진 채 기동되어 쓰기 요청이 아래 라우트로 제한 없이 통과한다.
+ * 설정과 관계없이 기동 단계에서 막고, 잘못 쓴 라우트 ID를 오류에 남기려고 여기서 검사한다.
  */
 @Component
 @RequiredArgsConstructor

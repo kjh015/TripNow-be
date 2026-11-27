@@ -15,14 +15,15 @@ public class AuthTokenRevoker {
     private final TokenBlacklistRepository tokenBlacklistRepository;
     private final JwtTokenProvider jwtTokenProvider;
 
-    // 리프레시 토큰 삭제 + 현재 액세스 토큰을 남은 유효 시간만큼 블랙리스트에 등록
+    // 현재 액세스 토큰을 남은 유효 시간만큼 블랙리스트에 등록 + 리프레시 토큰 삭제
+    // 액세스 토큰을 바로 막는 블랙리스트 등록을 먼저 한다. 리프레시 토큰 삭제가 실패해도 액세스 토큰은 막힌다
     public void revokeAll(Long memberId, String accessToken) {
-        refreshTokenRepository.deleteByMemberId(memberId);
-
         long remainingTime = jwtTokenProvider.getRemainingExpirationTime(accessToken);
         if (remainingTime > 0) {
             tokenBlacklistRepository.save(TokenHashUtil.hash(accessToken), remainingTime);
         }
+
+        refreshTokenRepository.deleteByMemberId(memberId);
     }
 
     // 액세스 토큰을 알 수 없을 때(관리자 강제 탈퇴 등): 재발급만 막는다

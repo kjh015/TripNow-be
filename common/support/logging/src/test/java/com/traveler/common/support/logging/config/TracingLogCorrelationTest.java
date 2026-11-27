@@ -21,8 +21,9 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.actuate.autoconfigure.observation.ObservationAutoConfiguration;
-import org.springframework.boot.actuate.autoconfigure.tracing.BraveAutoConfiguration;
+import org.springframework.boot.actuate.autoconfigure.opentelemetry.OpenTelemetryAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.tracing.MicrometerTracingAutoConfiguration;
+import org.springframework.boot.actuate.autoconfigure.tracing.OpenTelemetryTracingAutoConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.logging.LoggingSystemProperty;
@@ -126,7 +127,8 @@ class TracingLogCorrelationTest {
     @ImportAutoConfiguration({
         ObservationAutoConfiguration.class,
         MicrometerTracingAutoConfiguration.class,
-        BraveAutoConfiguration.class
+        OpenTelemetryAutoConfiguration.class,
+        OpenTelemetryTracingAutoConfiguration.class
     })
     static class TracingConfig {}
 }

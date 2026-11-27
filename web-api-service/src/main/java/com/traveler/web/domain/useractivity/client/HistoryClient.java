@@ -6,6 +6,7 @@ import com.traveler.web.domain.useractivity.client.dto.response.HistoryClientRes
 import com.traveler.web.domain.useractivity.enums.FailStage;
 import com.traveler.web.domain.useractivity.enums.HistoryStatus;
 import com.traveler.web.global.feign.config.FeignClientConfig;
+import com.traveler.web.global.resilience.DownstreamServiceNames;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.cloud.openfeign.SpringQueryMap;
 import org.springframework.data.domain.Pageable;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @FeignClient(
-        name = "user-activity-service",
+        name = DownstreamServiceNames.USER_ACTIVITY,
         contextId = "HistoryClient",
         path = "/v1/admin/histories",
         configuration = FeignClientConfig.class)

@@ -2,12 +2,9 @@ package com.traveler.gateway.filter.tracing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import brave.Tracing;
 import io.micrometer.tracing.Span;
-import io.micrometer.tracing.brave.bridge.BraveCurrentTraceContext;
-import io.micrometer.tracing.brave.bridge.BraveTracer;
 import io.micrometer.tracing.handler.TracingObservationHandler;
-import org.junit.jupiter.api.AfterEach;
+import io.micrometer.tracing.test.simple.SimpleTracer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -17,15 +14,8 @@ import org.springframework.mock.web.server.MockServerWebExchange;
 
 class TraceIdResponseHeaderFilterTest {
 
-    private final Tracing tracing = Tracing.newBuilder().build();
-    private final BraveTracer tracer =
-            new BraveTracer(tracing.tracer(), new BraveCurrentTraceContext(tracing.currentTraceContext()));
+    private final SimpleTracer tracer = new SimpleTracer();
     private final TraceIdResponseHeaderFilter filter = new TraceIdResponseHeaderFilter();
-
-    @AfterEach
-    void tearDown() {
-        tracing.close();
-    }
 
     @Test
     @DisplayName("서버 observation의 traceId를 X-Trace-Id 응답 헤더에 넣고, 라우트 필터가 에러로 끝내도 남는다")

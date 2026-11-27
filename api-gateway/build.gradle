@@ -36,6 +36,8 @@ dependencies {
     // Spring Cloud Gateway
 	implementation 'org.springframework.cloud:spring-cloud-starter-gateway'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    // 추적 구현(Bridge)에 묶이지 않는 테스트용 Tracer(SimpleTracer)
+    testImplementation 'io.micrometer:micrometer-tracing-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     // Testcontainers (@Tag("integration") 테스트, ./gradlew integrationTest)

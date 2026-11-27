@@ -14,9 +14,10 @@ import com.traveler.web.domain.member.cache.MemberNicknameCache;
 import com.traveler.web.domain.member.client.MemberClient;
 import com.traveler.web.global.exception.WebApiServiceException;
 import com.traveler.web.global.exception.code.WebApiServiceErrorCode;
-import com.traveler.web.global.resilience.DownstreamCallExecutor;
+import com.traveler.web.global.resilience.DownstreamCircuitBreakerConfig;
 import feign.codec.DecodeException;
 import io.github.resilience4j.springboot3.circuitbreaker.autoconfigure.CircuitBreakerAutoConfiguration;
+import io.github.resilience4j.springboot3.timelimiter.autoconfigure.TimeLimiterAutoConfiguration;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.AfterAll;
@@ -28,6 +29,8 @@ import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.http.HttpMessageConvertersAutoConfiguration;
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cloud.circuitbreaker.resilience4j.Resilience4JAutoConfiguration;
+import org.springframework.cloud.client.circuitbreaker.NoFallbackAvailableException;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.cloud.openfeign.FeignAutoConfiguration;
 import org.springframework.context.annotation.Configuration;
@@ -57,10 +60,12 @@ class MemberClientAdapterWireMockTest {
         JacksonAutoConfiguration.class,
         HttpMessageConvertersAutoConfiguration.class,
         FeignAutoConfiguration.class,
-        CircuitBreakerAutoConfiguration.class
+        CircuitBreakerAutoConfiguration.class,
+        TimeLimiterAutoConfiguration.class,
+        Resilience4JAutoConfiguration.class
     })
     @EnableFeignClients(clients = MemberClient.class)
-    @Import({MemberClientAdapter.class, DownstreamCallExecutor.class, MemberNicknameCache.class})
+    @Import({MemberClientAdapter.class, DownstreamCircuitBreakerConfig.class, MemberNicknameCache.class})
     static class FeignTestConfig {}
 
     @DynamicPropertySource
@@ -148,7 +153,10 @@ class MemberClientAdapterWireMockTest {
                         .withBody(
                                 "{\"success\":false,\"code\":\"MEMBER404_1\",\"message\":\"회원 없음\",\"result\":null}")));
 
+        // Spring Cloud CircuitBreaker가 Feign 호출 예외를 NoFallbackAvailableException으로 감싼다
         assertThatThrownBy(() -> memberClientAdapter.getMemberNickname(1L))
+                .isInstanceOf(NoFallbackAvailableException.class)
+                .cause()
                 .isInstanceOf(WebApiServiceException.class)
                 .satisfies(ex -> {
                     WebApiServiceException webEx = (WebApiServiceException) ex;
@@ -161,11 +169,14 @@ class MemberClientAdapterWireMockTest {
     @DisplayName("성공 응답인데 result가 비어 있으면 DecodeException으로 감싸진 채 전파되어 기본 닉네임을 쓰지 않는다(현재 동작)")
     void emptyResultPropagatesAsDecodeException() {
         // ValidatedFeignDecoder의 SERVICE_RESPONSE_EMPTY(500)를 Feign이 DecodeException으로 감싸
-        // ExceptionUtils.isRetryableException()이 장애로 보지 않는다. 동작을 바꾸면 이 테스트도 함께 고친다
+        // ExceptionUtils.isDownstreamFailure()가 장애로 보지 않는다. 동작을 바꾸면 이 테스트도 함께 고친다.
+        // Spring Cloud CircuitBreaker가 그 DecodeException을 다시 NoFallbackAvailableException으로 감싼다
         WIRE_MOCK.stubFor(get(urlPathEqualTo("/v1/members/1"))
                 .willReturn(okJson("{\"success\":true,\"code\":\"COMMON200\",\"message\":\"OK\",\"result\":null}")));
 
         assertThatThrownBy(() -> memberClientAdapter.getMemberNickname(1L))
+                .isInstanceOf(NoFallbackAvailableException.class)
+                .cause()
                 .isInstanceOf(DecodeException.class)
                 .cause()
                 .isInstanceOf(WebApiServiceException.class)

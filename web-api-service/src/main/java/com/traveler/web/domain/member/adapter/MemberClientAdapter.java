@@ -4,69 +4,59 @@ import com.traveler.web.domain.member.cache.MemberNicknameCache;
 import com.traveler.web.domain.member.client.MemberClient;
 import com.traveler.web.domain.member.client.dto.request.MemberClientRequest;
 import com.traveler.web.domain.member.client.dto.response.MemberClientResponse;
-import com.traveler.web.global.resilience.DownstreamCallExecutor;
+import com.traveler.web.global.exception.ExceptionUtils;
 import com.traveler.web.global.resilience.DownstreamServiceNames;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import java.util.*;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class MemberClientAdapter {
     public static final String DEFAULT_NICKNAME = "알 수 없음";
 
     private final MemberClient memberClient;
-    private final DownstreamCallExecutor downstreamCallExecutor;
     private final MemberNicknameCache memberNicknameCache;
 
     public MemberClientResponse.SignUpDTO signUp(MemberClientRequest.SignUpDTO dto) {
-        return downstreamCallExecutor.execute(
-                DownstreamServiceNames.MEMBER, () -> memberClient.signUp(dto).result());
+        return memberClient.signUp(dto).result();
     }
 
     public MemberClientResponse.WithdrawDTO withdraw() {
-        MemberClientResponse.WithdrawDTO response = downstreamCallExecutor.execute(
-                DownstreamServiceNames.MEMBER, () -> memberClient.withdraw().result());
+        MemberClientResponse.WithdrawDTO response = memberClient.withdraw().result();
         memberNicknameCache.evict(response != null ? response.memberId() : null);
         return response;
     }
 
     public MemberClientResponse.UpdateDTO updateMember(MemberClientRequest.UpdateDTO dto) {
-        MemberClientResponse.UpdateDTO response = downstreamCallExecutor.execute(
-                DownstreamServiceNames.MEMBER,
-                () -> memberClient.updateMember(dto).result());
+        MemberClientResponse.UpdateDTO response = memberClient.updateMember(dto).result();
         memberNicknameCache.evict(response != null ? response.memberId() : null);
         return response;
     }
 
     public MemberClientResponse.UpdatePasswordDTO updatePassword(MemberClientRequest.UpdatePasswordDTO dto) {
-        return downstreamCallExecutor.execute(
-                DownstreamServiceNames.MEMBER,
-                () -> memberClient.updatePassword(dto).result());
+        return memberClient.updatePassword(dto).result();
     }
 
     public MemberClientResponse.MyProfileDTO getMyProfile() {
-        return downstreamCallExecutor.execute(
-                DownstreamServiceNames.MEMBER, () -> memberClient.getMyProfile().result());
+        return memberClient.getMyProfile().result();
     }
 
     public MemberClientResponse.AvailabilityDTO checkLoginIdAvailability(String loginId) {
-        return downstreamCallExecutor.execute(
-                DownstreamServiceNames.MEMBER,
-                () -> memberClient.checkLoginIdAvailability(loginId).result());
+        return memberClient.checkLoginIdAvailability(loginId).result();
     }
 
     public MemberClientResponse.AvailabilityDTO checkEmailAvailability(String email) {
-        return downstreamCallExecutor.execute(
-                DownstreamServiceNames.MEMBER,
-                () -> memberClient.checkEmailAvailability(email).result());
+        return memberClient.checkEmailAvailability(email).result();
     }
 
     public MemberClientResponse.AvailabilityDTO checkNicknameAvailability(String nickname) {
-        return downstreamCallExecutor.execute(
-                DownstreamServiceNames.MEMBER,
-                () -> memberClient.checkNicknameAvailability(nickname).result());
+        return memberClient.checkNicknameAvailability(nickname).result();
     }
 
     /**
@@ -89,8 +79,7 @@ public class MemberClientAdapter {
         }
 
         long cacheVersion = memberNicknameCache.version();
-        Map<Long, String> fetched = downstreamCallExecutor.executeOrDefault(
-                DownstreamServiceNames.MEMBER, () -> fetchNicknameMap(missingIds), Collections.emptyMap());
+        Map<Long, String> fetched = callOrDefault(() -> fetchNicknameMap(missingIds), Collections.emptyMap());
         memberNicknameCache.putAll(fetched, cacheVersion);
 
         missingIds.forEach(memberId -> nicknameMap.put(memberId, fetched.getOrDefault(memberId, DEFAULT_NICKNAME)));
@@ -105,8 +94,7 @@ public class MemberClientAdapter {
         }
 
         long cacheVersion = memberNicknameCache.version();
-        String nickname = downstreamCallExecutor.executeOrDefault(
-                DownstreamServiceNames.MEMBER,
+        String nickname = callOrDefault(
                 () -> {
                     MemberClientResponse.ProfileDTO profile =
                             memberClient.getMemberProfile(memberId).result();
@@ -121,14 +109,33 @@ public class MemberClientAdapter {
     }
 
     public String getMyNickname() {
-        return downstreamCallExecutor.executeOrDefault(
-                DownstreamServiceNames.MEMBER,
+        return callOrDefault(
                 () -> {
                     MemberClientResponse.MyProfileDTO profile =
                             memberClient.getMyProfile().result();
                     return nicknameOrDefault(profile != null ? profile.nickname() : null);
                 },
                 DEFAULT_NICKNAME);
+    }
+
+    /**
+     * member-service 장애(5xx·타임아웃·연결 실패)나 서킷 열림이면 fallback을 반환하고, 4xx 등은 그대로 던진다.
+     * Feign 호출은 Spring Cloud CircuitBreaker가 감싸므로 예외는 NoFallbackAvailableException에 담겨 온다.
+     */
+    private <T> T callOrDefault(Supplier<T> call, T fallback) {
+        try {
+            return call.get();
+        } catch (RuntimeException ex) {
+            if (!ExceptionUtils.isDownstreamFailure(ex)) {
+                throw ex;
+            }
+            Throwable cause = ExceptionUtils.unwrapCircuitBreaker(ex);
+            // 서킷 열림은 상태가 바뀔 때만 WARN을 남긴다(CircuitBreakerStateLogger). 호출마다 남기지 않는다
+            if (!(cause instanceof CallNotPermittedException)) {
+                log.warn("{} 장애로 대체값을 사용합니다.", DownstreamServiceNames.MEMBER, cause);
+            }
+            return fallback;
+        }
     }
 
     private Map<Long, String> fetchNicknameMap(Set<Long> memberIds) {

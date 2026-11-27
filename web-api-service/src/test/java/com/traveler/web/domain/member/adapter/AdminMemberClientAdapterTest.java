@@ -11,9 +11,6 @@ import com.traveler.web.domain.member.client.AdminMemberClient;
 import com.traveler.web.domain.member.client.dto.response.AdminMemberClientResponse;
 import com.traveler.web.global.exception.WebApiServiceException;
 import com.traveler.web.global.feign.decoder.ServiceErrorCode;
-import com.traveler.web.global.resilience.DownstreamCallExecutor;
-import com.traveler.web.global.resilience.DownstreamServiceNames;
-import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -33,11 +30,8 @@ class AdminMemberClientAdapterTest {
 
     @BeforeEach
     void setUp() {
-        CircuitBreakerRegistry registry = CircuitBreakerRegistry.ofDefaults();
-        registry.circuitBreaker(DownstreamServiceNames.MEMBER);
         memberNicknameCache = new MemberNicknameCache();
-        adminMemberClientAdapter = new AdminMemberClientAdapter(
-                adminMemberClient, new DownstreamCallExecutor(registry), memberNicknameCache);
+        adminMemberClientAdapter = new AdminMemberClientAdapter(adminMemberClient, memberNicknameCache);
         memberNicknameCache.put(1L, "여행자", memberNicknameCache.version());
     }
 
