@@ -3,8 +3,10 @@ package com.traveler.member.domain.auth.support;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -13,9 +15,11 @@ import com.traveler.member.domain.auth.repository.TokenBlacklistRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.QueryTimeoutException;
 import org.springframework.data.redis.RedisConnectionFailureException;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,6 +49,32 @@ class AuthTokenRevokerTest {
 
         assertThatThrownBy(() -> authTokenRevoker.revokeAll(MEMBER_ID, ACCESS_TOKEN))
                 .isInstanceOf(RedisConnectionFailureException.class);
+    }
+
+    @Test
+    @DisplayName("블랙리스트 등록을 리프레시 토큰 삭제보다 먼저 한다")
+    void revokeAll_blacklistsBeforeDeletingRefreshToken() {
+        given(jwtTokenProvider.getRemainingExpirationTime(ACCESS_TOKEN)).willReturn(1_000L);
+
+        authTokenRevoker.revokeAll(MEMBER_ID, ACCESS_TOKEN);
+
+        InOrder inOrder = inOrder(tokenBlacklistRepository, refreshTokenRepository);
+        inOrder.verify(tokenBlacklistRepository).save(anyString(), eq(1_000L));
+        inOrder.verify(refreshTokenRepository).deleteByMemberId(MEMBER_ID);
+    }
+
+    @Test
+    @DisplayName("리프레시 토큰 삭제가 실패해도 블랙리스트 등록은 한다")
+    void revokeAll_refreshDeleteFailure_stillBlacklists() {
+        given(jwtTokenProvider.getRemainingExpirationTime(ACCESS_TOKEN)).willReturn(1_000L);
+        willThrow(new QueryTimeoutException("timeout"))
+                .given(refreshTokenRepository)
+                .deleteByMemberId(MEMBER_ID);
+
+        assertThatThrownBy(() -> authTokenRevoker.revokeAll(MEMBER_ID, ACCESS_TOKEN))
+                .isInstanceOf(QueryTimeoutException.class);
+
+        verify(tokenBlacklistRepository).save(anyString(), eq(1_000L));
     }
 
     @Test

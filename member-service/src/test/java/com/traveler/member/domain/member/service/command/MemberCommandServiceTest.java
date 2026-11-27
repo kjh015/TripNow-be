@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
@@ -118,7 +119,7 @@ class MemberCommandServiceTest {
     }
 
     @Test
-    @DisplayName("리프레시 토큰 삭제 중 Redis 예외가 나도 탈퇴는 성공한다")
+    @DisplayName("리프레시 토큰 삭제 중 Redis 예외가 나도 탈퇴는 성공하고, 블랙리스트 등록은 한다")
     void withdraw_redisFailureOnRefreshToken_stillSucceeds() {
         willThrow(new RedisConnectionFailureException("down"))
                 .given(refreshTokenRepository)
@@ -128,7 +129,7 @@ class MemberCommandServiceTest {
 
         assertThat(member.isDeleted()).isTrue();
         assertThat(result.memberId()).isEqualTo(MEMBER_ID);
-        verify(tokenBlacklistRepository, never()).save(anyString(), anyLong());
+        verify(tokenBlacklistRepository).save(anyString(), eq(REMAINING_MILLIS));
     }
 
     @Test
@@ -142,7 +143,8 @@ class MemberCommandServiceTest {
 
         assertThat(member.isDeleted()).isTrue();
         assertThat(result.memberId()).isEqualTo(MEMBER_ID);
-        verify(refreshTokenRepository).deleteByMemberId(MEMBER_ID);
+        // 남은 리프레시 토큰은 reissue가 탈퇴 회원을 거부하며 지운다
+        verify(refreshTokenRepository, never()).deleteByMemberId(anyLong());
     }
 
     @Test
